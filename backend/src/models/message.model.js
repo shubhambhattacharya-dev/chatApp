@@ -1,6 +1,73 @@
-import mongoose from 'mongoose'
+import mongoose from 'mongoose';
 
-const messageSchema=new mongoose.Schema({},)
+const messageSchema = new mongoose.Schema({
+    senderId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    receiverId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    message: {
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: 1000
+    },
+    messageType: {
+        type: String,
+        enum: ['text', 'image', 'file'],
+        default: 'text'
+    },
+    fileUrl: {
+        type: String,
+        default: ''
+    },
+    isRead: {
+        type: Boolean,
+        default: false
+    },
+    readAt: {
+        type: Date,
+        default: null
+    }
+}, {
+    timestamps: true
+});
 
-const Message=mongoose.model('Message',messageSchema);
+// Add indexes for better performance
+messageSchema.index({ senderId: 1, receiverId: 1 });
+messageSchema.index({ createdAt: -1 });
+
+// Virtual for conversation ID (to group messages between two users)
+messageSchema.virtual('conversationId').get(function() {
+    return [this.senderId, this.receiverId].sort().join('_');
+});
+
+// Static method to get conversation between two users
+messageSchema.statics.getConversation = function(userId1, userId2, limit = 50) {
+    return this.find({
+        $or: [
+            { senderId: userId1, receiverId: userId2 },
+            { senderId: userId2, receiverId: userId1 }
+        ]
+    })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .populate('senderId', 'username fullName profilePic')
+    .populate('receiverId', 'username fullName profilePic');
+};
+
+// Instance method to mark as read
+messageSchema.methods.markAsRead = function() {
+    this.isRead = true;
+    this.readAt = new Date();
+    return this.save();
+};
+
+const Message = mongoose.model('Message', messageSchema);
+
 export default Message;

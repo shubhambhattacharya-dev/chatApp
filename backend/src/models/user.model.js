@@ -7,7 +7,8 @@ const userSchema = new mongoose.Schema({
         unique: true,
         trim: true,
         minlength: 3,
-        maxlength: 50
+        maxlength: 50,
+        index: true
     },
     fullName: {
         type: String,
@@ -22,7 +23,8 @@ const userSchema = new mongoose.Schema({
         unique: true,
         trim: true,
         lowercase: true,
-        match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
+        match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email'],
+        index: true
     },
     password: {
         type: String,
@@ -45,9 +47,7 @@ const userSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Add indexes for better performance
-userSchema.index({ email: 1 });
-userSchema.index({ username: 1 });
+// Indexes are now defined inline with schema fields above
 
 // Pre-save middleware for additional validation
 userSchema.pre('save', function(next) {

@@ -1,22 +1,23 @@
 
 import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv';
 
+export const generateToken = (userId, res) => {
+    try {
+        const token = jwt.sign({ userId }, process.env.JWT_SECRET || 'fallback_secret', {
+            expiresIn: '7d',
+        });
 
-dotenv.config();
+        // Cookie options
+        res.cookie('jwt', token, {
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            httpOnly: true, // Prevent XSS attacks
+            sameSite: 'strict', // CSRF protection
+            secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+        });
 
-export const generateToken=(userId,res)=>{
-    const token=jwt.sign({userId},process.env.JWT_SECRET,{
-        expiresIn:'7d',
-    });
-    //cookie options
-    res.cookie("jwt",token,{
-        //maxage
-        maxAge:7*24*60*60*1000,
-        httpOnly:true,//accessible only by web server and not js and prevent cross site scripting attacks xss
-        sameSite:"strict",//csrf protection , csrf attacks mean unauthorized commands are transmitted from a user that the web application trusts
-        secure:process.env.NODE_ENV==='production',//https only in production
-
-    })
-    return token;
-}
+        return token;
+    } catch (error) {
+        console.error('Token generation error:', error);
+        throw new Error('Failed to generate authentication token');
+    }
+};

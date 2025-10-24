@@ -1,24 +1,23 @@
-import expres from 'express';
+import express from 'express';
 import authRoutes from './routes/auth.route.js';
 import dotenv from 'dotenv';
 import connectDB from './db/connectMongoDB.js';
+import cookieParser from 'cookie-parser';
 
 dotenv.config({ path: '../.env' });
 connectDB();
 
-
-
-const app = expres();
+const app = express();
 
 // Middleware for parsing JSON
-app.use(expres.json());
-app.use(expres.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
-const port =process.env.PORT || 8000;
+const port = process.env.PORT || 8000;
 
-app.use('/api/auth',authRoutes);
+app.use('/api/auth', authRoutes);
 
-app.listen(port,()=>{
+app.listen(port, () => {
     console.log(`http://localhost:${port}`);
-    
-})
+});
