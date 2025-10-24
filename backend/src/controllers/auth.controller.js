@@ -1,10 +1,16 @@
 import User from '../models/user.model.js';
 import bcrypt from 'bcryptjs';
+import { generateToken } from '../lib/util/generateToken.js';
 
 
 export const signup=async(req,res)=>{
-    const  {fullName,email,password} =req.bodyl
+    const  {fullName,email,password} =req.body
     try {
+
+if(!fullName||!email||!password){
+        return res.status(400).json({message:'please provide all required fields'});
+    } 
+
         // for hashing password from bcryptjs
         if(password.length<6){
             return res.status(400).json({
@@ -23,6 +29,7 @@ export const signup=async(req,res)=>{
         //newUser 
 
         const newUser=new User({
+            username: fullName, // Map fullName to username since model requires it
             fullName,
             email,
             password:hashedPassword
@@ -30,6 +37,20 @@ export const signup=async(req,res)=>{
 
         if(newUser){
             //generate token jwt 
+            generateToken(newUser._id,res);
+          
+            await newUser.save();
+            res.status(201).json({
+                _id:newUser._id,
+                username: newUser.username,
+                fullName:newUser.fullName,
+                email:newUser.email,
+                lastSeen:newUser.lastSeen,
+                profilePic:newUser.profilePic,
+                isOnline:newUser.isOnline
+
+
+            })
 
         }else{
             return res.status(400).json({message:'invalid user data'});
@@ -37,6 +58,9 @@ export const signup=async(req,res)=>{
         }
         
     } catch (error) {
+        console.error("error in signup controller:",error.message);
+        res.status(500).json({message:'Internal server error'});
+
         
     }
     
