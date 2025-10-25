@@ -136,11 +136,6 @@ const user = await User.findOne({
         user.lastSeen = new Date();
         await user.save();
 
-        // Update user online status and last seen
-        user.isOnline = true;
-        user.lastSeen = new Date();
-        await user.save();
-
         // Generate JWT token
         generateToken(user._id, res);
 
