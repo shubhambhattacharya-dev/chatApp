@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import connectDB from './db/connectMongoDB.js';
 import cookieParser from 'cookie-parser';
 import messageRoutes from './routes/message.route.js';
+import cors from 'cors';
 import { createServer } from 'http';
 
 
@@ -13,6 +14,11 @@ connectDB();
 const app = express();
 const server = createServer(app);
 
+// CORS configuration
+app.use(cors({
+  origin: 'http://localhost:3000',
+  credentials: true
+}));
 
 // Middleware for parsing JSON
 app.use(express.json());

@@ -241,21 +241,55 @@ export const updateProfile =async(req,res)=>{
     }
 }
 
-export const checkAuth=async(req,res)=>{
+export const checkAuth = async (req, res) => {
     try {
-       res.status(200).json({
-        success:true,
-        message:"User is authenticated",
-        user:req.user
-       }) 
+        const token = req.cookies.jwt;
+
+        if (!token) {
+            return res.status(200).json({
+                success: true,
+                message: "No token provided",
+                user: null
+            });
+        }
+
+        const jwt = await import('jsonwebtoken');
+        const decoded = jwt.default.verify(token, process.env.JWT_SECRET || 'fallback_secret');
+
+        if (!decoded) {
+            return res.status(200).json({
+                success: true,
+                message: "Invalid token",
+                user: null
+            });
+        }
+
+        const User = (await import('../models/user.model.js')).default;
+        const user = await User.findById(decoded.userId).select('-password');
+
+        if (!user) {
+            return res.status(200).json({
+                success: true,
+                message: "User not found",
+                user: null
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "User is authenticated",
+            user: user
+        });
     } catch (error) {
         console.error('Check auth error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Internal server error'
+        res.status(200).json({
+            success: true,
+            message: "Authentication check failed",
+            user: null
         });
-        
     }
 }
 
 export default { signup, login, logout };
+
+
