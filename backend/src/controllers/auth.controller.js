@@ -1,295 +1,334 @@
 import User from '../models/user.model.js';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { generateToken } from '../lib/util/generateToken.js';
 import cloudinary from '../lib/util/cloudinary.js';
 
+// ==================== SIGNUP ====================
 export const signup = async (req, res) => {
-    try {
-        const { fullName, email, password } = req.body;
+  try {
+    const { fullName, email, password } = req.body;
 
-        // Input validation
-        if (!fullName || !email || !password) {
-            return res.status(400).json({
-                success: false,
-                message: 'Please provide all required fields'
-            });
-        }
-
-        // Email format validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Please provide a valid email address'
-            });
-        }
-
-        // Password strength validation
-        if (password.length < 6) {
-            return res.status(400).json({
-                success: false,
-                message: 'Password must be at least 6 characters long'
-            });
-        }
-
-        // Check if user already exists
-        const existingUser = await User.findOne({
-            $or: [{ email: email.toLowerCase() }, { username: fullName }]
-        });
-
-        if (existingUser) {
-            return res.status(400).json({
-                success: false,
-                message: 'User with this email or username already exists'
-            });
-        }
-
-        // Hash password
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
-
-        // Create new user
-        const newUser = new User({
-            username: fullName.trim(),
-            fullName: fullName.trim(),
-            email: email.toLowerCase().trim(),
-            password: hashedPassword
-        });
-
-        // Save user to database
-        await newUser.save();
-
-        // Generate JWT token
-        generateToken(newUser._id, res);
-
-        // Return success response
-        res.status(201).json({
-            success: true,
-            message: 'User created successfully',
-            user: {
-                _id: newUser._id,
-                username: newUser.username,
-                fullName: newUser.fullName,
-                email: newUser.email,
-                profilePic: newUser.profilePic,
-                isOnline: newUser.isOnline,
-                lastSeen: newUser.lastSeen
-            }
-        });
-
-    } catch (error) {
-        console.error('Signup error:', error);
-
-        // Handle specific database errors
-        if (error.code === 11000) {
-            return res.status(400).json({
-                success: false,
-                message: 'User with this email or username already exists'
-            });
-        }
-
-        res.status(500).json({
-            success: false,
-            message: 'Internal server error'
-        });
+    // Input validation
+    if (!fullName || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide all required fields',
+      });
     }
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid email address',
+      });
+    }
+
+    // Password strength validation
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 8 characters long',
+      });
+    }
+    if (!passwordRegex.test(password)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character',
+      });
+    }
+
+    // Generate username and validate uniqueness
+    const username = fullName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20);
+    if (username.length < 3) {
+      return res.status(400).json({
+        success: false,
+        message: 'Full name must contain at least 3 alphanumeric characters for username generation',
+      });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({
+      $or: [{ email: email.toLowerCase() }, { username }],
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'User with this email or username already exists',
+      });
+    }
+
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Create new user
+    const newUser = new User({
+      username,
+      fullName: fullName.trim(),
+      email: email.toLowerCase().trim(),
+      password: hashedPassword,
+    });
+
+    // Save user
+    await newUser.save();
+
+    // Generate JWT token and set cookie
+    generateToken(newUser._id, res);
+
+    // Return response
+    res.status(201).json({
+      success: true,
+      message: 'User created successfully',
+      user: {
+        _id: newUser._id,
+        username: newUser.username,
+        fullName: newUser.fullName,
+        email: newUser.email,
+        profilePic: newUser.profilePic,
+        isOnline: newUser.isOnline,
+        lastSeen: newUser.lastSeen,
+        createdAt: newUser.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error('Signup error:', error);
+
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyValue)[0];
+      return res.status(400).json({
+        success: false,
+        message: `User with this ${field} already exists`,
+      });
+    }
+
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: messages,
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error during signup',
+    });
+  }
 };
 
+// ==================== LOGIN ====================
 export const login = async (req, res) => {
-    try {
-        const { username, password } = req.body; // username OR email
+  try {
+    const { email, password } = req.body;
 
-if (!username || !password) {
-    return res.status(400).json({
+    if (!email || !password) {
+      return res.status(400).json({
         success: false,
-        message: 'Please provide email/username and password'
+        message: 'Please provide email and password',
+      });
+    }
+
+    const user = await User.findOne({
+      email: email.toLowerCase(),
     });
-}
 
-const user = await User.findOne({
-    $or: [
-        { email: username.toLowerCase() },
-        { username: username }
-    ]
-});
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid credentials',
+      });
+    }
 
+    // Check password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
 
-        if (!user) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid credentials'
-            });
-        }
+    if (!isPasswordValid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid credentials',
+      });
+    }
 
-        // Check password
-        const isPasswordValid = await bcrypt.compare(password, user.password);
+    // Update status
+    user.isOnline = true;
+    user.lastSeen = new Date();
+    await user.save();
 
-        if (!isPasswordValid) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid credentials'
-            });
-        }
+    // Generate token and set cookie
+    generateToken(user._id, res);
 
-        // Update user online status and last seen
-        user.isOnline = true;
+    res.status(200).json({
+      success: true,
+      message: 'Login successful',
+      user: {
+        _id: user._id,
+        username: user.username,
+        fullName: user.fullName,
+        email: user.email,
+        profilePic: user.profilePic,
+        isOnline: user.isOnline,
+        lastSeen: user.lastSeen,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error during login',
+    });
+  }
+};
+
+// ==================== LOGOUT ====================
+export const logout = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+
+    if (userId) {
+      const user = await User.findById(userId);
+      if (user) {
+        user.isOnline = false;
         user.lastSeen = new Date();
         await user.save();
-
-        // Generate JWT token
-        generateToken(user._id, res);
-
-        // Return success response
-        res.status(200).json({
-            success: true,
-            message: 'Login successful',
-            user: {
-                _id: user._id,
-                username: user.username,
-                fullName: user.fullName,
-                email: user.email,
-                profilePic: user.profilePic,
-                isOnline: user.isOnline,
-                lastSeen: user.lastSeen
-            }
-        });
-
-    } catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Internal server error'
-        });
+      }
     }
+
+    // Clear cookie
+    res.cookie('jwt', '', {
+      maxAge: 0,
+      httpOnly: true,
+      sameSite: 'strict',
+      secure: process.env.NODE_ENV === 'production',
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Logged out successfully',
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error during logout',
+    });
+  }
 };
 
-export const logout = async (req, res) => {
-    try {
-        // Get user ID from JWT token if available (set by auth middleware)
-        const userId = req.user?._id;
+// ==================== UPDATE PROFILE ====================
+export const updateProfile = async (req, res) => {
+  try {
+    const { profilePic } = req.body;
+    const userId = req.user._id;
 
-        if (userId) {
-            // Update user offline status
-            const user = await User.findById(userId);
-            if (user) {
-                user.isOnline = false;
-                user.lastSeen = new Date();
-                await user.save();
-            }
-        }
-
-        // Clear JWT cookie
-        res.cookie('jwt', '', {
-            maxAge: 0,
-            httpOnly: true,
-            sameSite: 'strict',
-            secure: process.env.NODE_ENV === 'production'
-        });
-
-        res.status(200).json({
-            success: true,
-            message: 'Logged out successfully'
-        });
-
-    } catch (error) {
-        console.error('Logout error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Internal server error'
-        });
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized: User not found',
+      });
     }
+
+    if (!profilePic) {
+      return res.status(400).json({
+        success: false,
+        message: 'No profile picture provided',
+      });
+    }
+
+    let uploadResponse;
+    try {
+      uploadResponse = await cloudinary.uploader.upload(profilePic, {
+        folder: 'profile_pics',
+        width: 150,
+        crop: 'scale',
+      });
+    } catch (error) {
+      console.error('Error uploading to Cloudinary:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error uploading profile picture',
+      });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { profilePic: uploadResponse.secure_url },
+      { new: true }
+    ).select('-password');
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: {
+        _id: updatedUser._id,
+        username: updatedUser.username,
+        fullName: updatedUser.fullName,
+        email: updatedUser.email,
+        profilePic: updatedUser.profilePic,
+        isOnline: updatedUser.isOnline,
+        lastSeen: updatedUser.lastSeen,
+        createdAt: updatedUser.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error during profile update',
+    });
+  }
 };
 
-export const updateProfile =async(req,res)=>{
-    try {
-        const { profilePic } = req.body;
-        const userId=req.user._id;
-
-        if(!userId){
-            return res.status(401).json({
-                success:false,
-                message:"Unauthorized: User not found"
-            })
-        }
-
-        const uploadResponse=await cloudinary.uploader.upload(profilePic,{
-            folder:'profile_pics',
-            width:150,
-            crop:'scale'
-        });
-
-        const updateUser=await User.findByIdAndUpdate(userId,{
-            profilePic:uploadResponse.secure_url
-        },{
-            new:true
-        });
-
-        res.status(200).json({
-            success:true,
-            message:"Profile updated successfully",
-            user:updateUser
-        })
-
-        
-    } catch (error) {
-        console.error('Update profile error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Internal server error'
-        });
-        
-    }
-}
-
+// ==================== CHECK AUTH ====================
 export const checkAuth = async (req, res) => {
-    try {
-        const token = req.cookies.jwt;
+  try {
+    const token = req.cookies.jwt;
 
-        if (!token) {
-            return res.status(200).json({
-                success: true,
-                message: "No token provided",
-                user: null
-            });
-        }
-
-        const jwt = await import('jsonwebtoken');
-        const decoded = jwt.default.verify(token, process.env.JWT_SECRET || 'fallback_secret');
-
-        if (!decoded) {
-            return res.status(200).json({
-                success: true,
-                message: "Invalid token",
-                user: null
-            });
-        }
-
-        const User = (await import('../models/user.model.js')).default;
-        const user = await User.findById(decoded.userId).select('-password');
-
-        if (!user) {
-            return res.status(200).json({
-                success: true,
-                message: "User not found",
-                user: null
-            });
-        }
-
-        res.status(200).json({
-            success: true,
-            message: "User is authenticated",
-            user: user
-        });
-    } catch (error) {
-        console.error('Check auth error:', error);
-        res.status(200).json({
-            success: true,
-            message: "Authentication check failed",
-            user: null
-        });
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'No token provided',
+        user: null,
+      });
     }
-}
 
-export default { signup, login, logout };
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+    if (!decoded) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token',
+        user: null,
+      });
+    }
 
+    const user = await User.findById(decoded.userId).select('-password');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+        user: null,
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'User is authenticated',
+      user,
+    });
+  } catch (error) {
+    console.error('Check auth error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error during authentication check',
+      user: null,
+    });
+  }
+};

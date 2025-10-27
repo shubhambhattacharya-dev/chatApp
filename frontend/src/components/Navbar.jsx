@@ -49,7 +49,7 @@ const Navbar = () => {
                 <MessageSquare className="size-7 text-white transition-transform duration-500 group-hover:scale-110" />
               </div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-primary via-primary/80 to-secondary bg-clip-text text-transparent">
-                justChat
+                JustChat
               </h1>
             </Link>
           </div>

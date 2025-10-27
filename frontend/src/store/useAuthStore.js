@@ -1,25 +1,29 @@
-//why need this file? because we are using zustand for state management and this file will help us to create a store for authentication state management.
+import { create } from "zustand";
+import { axiosInstance } from "../lib/axios.js";
+import toast from "react-hot-toast";
 
-import { create } from 'zustand';
-import { axiosInstance } from '../lib/axios';
-import toast from 'react-hot-toast';
+
+const BASE_URL = import.meta.env.MODE === "development" ? "http://localhost:8000" : "/";
 
 export const useAuthStore = create((set, get) => ({
   authUser: null,
   isSigningUp: false,
   isLoggingIn: false,
   isUpdatingProfile: false,
-  isCheckingAuthLoading: true,
+  isCheckingAuth: true,
+  onlineUsers: [],
+  socket: null,
 
   checkAuth: async () => {
     try {
-      const res = await axiosInstance.get('/auth/check');
+      const res = await axiosInstance.get("/auth/check-auth");
+
       set({ authUser: res.data.user });
+      get().connectSocket();
     } catch (error) {
-      console.log('error in check auth', error);
       set({ authUser: null });
     } finally {
-      set({ isCheckingAuthLoading: false });
+      set({ isCheckingAuth: false });
     }
   },
 
@@ -29,8 +33,9 @@ export const useAuthStore = create((set, get) => ({
       const res = await axiosInstance.post("/auth/signup", data);
       set({ authUser: res.data.user });
       toast.success("Account created successfully");
+      get().connectSocket();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Signup failed");
+      toast.error(error.response?.data?.message || error.message);
     } finally {
       set({ isSigningUp: false });
     }
@@ -41,9 +46,11 @@ export const useAuthStore = create((set, get) => ({
     try {
       const res = await axiosInstance.post("/auth/login", data);
       set({ authUser: res.data.user });
-      toast.success("Login successful");
+      toast.success("Logged in successfully");
+
+      get().connectSocket();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Login failed");
+      toast.error(error.response?.data?.message || error.message);
     } finally {
       set({ isLoggingIn: false });
     }
@@ -54,8 +61,9 @@ export const useAuthStore = create((set, get) => ({
       await axiosInstance.post("/auth/logout");
       set({ authUser: null });
       toast.success("Logged out successfully");
+      get().disconnectSocket();
     } catch (error) {
-      toast.error("Logout failed");
+      toast.error(error.response?.data?.message || error.message);
     }
   },
 
@@ -66,9 +74,12 @@ export const useAuthStore = create((set, get) => ({
       set({ authUser: res.data.user });
       toast.success("Profile updated successfully");
     } catch (error) {
-      toast.error(error.response?.data?.message || "Profile update failed");
+      toast.error(error.response?.data?.message || error.message);
     } finally {
       set({ isUpdatingProfile: false });
     }
   },
+
+
+  
 }));

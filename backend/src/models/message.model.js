@@ -13,19 +13,18 @@ const messageSchema = new mongoose.Schema({
     },
     message: {
         type: String,
-        required: true,
         trim: true,
         maxlength: 1000
     },
-    messageType: {
-        type: String,
-        enum: ['text', 'image', 'file'],
-        default: 'text'
-    },
-    fileUrl: {
-        type: String,
-        default: ''
-    },
+    attachments: [{
+        type: {
+            type: String,
+            enum: ['image', 'file']
+        },
+        url: {
+            type: String
+        }
+    }],
     isRead: {
         type: Boolean,
         default: false

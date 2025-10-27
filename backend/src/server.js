@@ -1,37 +1,44 @@
-import express from 'express';
-import authRoutes from './routes/auth.route.js';
-import dotenv from 'dotenv';
-import connectDB from './db/connectMongoDB.js';
-import cookieParser from 'cookie-parser';
-import messageRoutes from './routes/message.route.js';
-import cors from 'cors';
-import { createServer } from 'http';
+import express from "express";
+import dotenv from "dotenv";
+import cors from "cors";
+import cookieParser from "cookie-parser";
 
 
-dotenv.config({ path: '../.env' });
-connectDB();
+import authRoutes from "./routes/auth.route.js";
+import messageRoutes from "./routes/message.route.js"
+import connectDB from "./db/connectMongoDB.js";
+
+
+dotenv.config();
 
 const app = express();
-const server = createServer(app);
+const PORT = process.env.PORT || 5001;
 
-// CORS configuration
+// Middleware
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001'],
-  credentials: true
+  origin: ["http://localhost:3000", "http://localhost:3001"], // Your frontend URLs
+  credentials: true,
 }));
-
-// Middleware for parsing JSON
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "5mb" })); // To parse JSON payloads
 app.use(cookieParser());
 
-const port = process.env.PORT || 8000;
+// Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/messages", messageRoutes);
 
-app.use('/api/auth', authRoutes);
-app.use('/api/messages',messageRoutes);
+// Error Handling Middleware
+// 1. 404 Not Found Handler
+app.use((req, res, next) => {
+  res.status(404).json({ success: false, message: "API endpoint not found" });
+});
 
-// Socket.io connection handling
+// 2. Global Error Handler
+app.use((err, req, res, next) => {
+  console.error("🔥 An unexpected error occurred:", err);
+  res.status(500).json({ success: false, message: "Internal Server Error" });
+});
 
-server.listen(port, () => {
-    console.log(`http://localhost:${port}`);
+app.listen(PORT, () => {
+  console.log(`🚀 Server is running on port ${PORT}`);
+  connectDB();
 });

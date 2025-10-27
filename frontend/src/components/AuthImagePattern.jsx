@@ -305,7 +305,7 @@ const AuthImagePattern = ({
       </div>
 
       {/* Custom Animations */}
-      <style jsx>{`
+      <style jsx="true">{`
         @keyframes orbital-1 {
           0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
           25% { transform: translate(20px, -15px) rotate(90deg) scale(1.1); }
