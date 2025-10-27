@@ -2,8 +2,8 @@ import { create } from "zustand";
 import { axiosInstance } from "../lib/axios.js";
 import toast from "react-hot-toast";
 
-
-const BASE_URL = import.meta.env.MODE === "development" ? "http://localhost:8000" : "/";
+const BASE_URL =
+  import.meta.env.MODE === "development" ? "http://localhost:8000" : "/";
 
 export const useAuthStore = create((set, get) => ({
   authUser: null,
@@ -17,10 +17,9 @@ export const useAuthStore = create((set, get) => ({
   checkAuth: async () => {
     try {
       const res = await axiosInstance.get("/auth/check-auth");
-
       set({ authUser: res.data.user });
-      get().connectSocket();
-    } catch (error) {
+      get().connectSocket?.();
+    } catch {
       set({ authUser: null });
     } finally {
       set({ isCheckingAuth: false });
@@ -33,7 +32,7 @@ export const useAuthStore = create((set, get) => ({
       const res = await axiosInstance.post("/auth/signup", data);
       set({ authUser: res.data.user });
       toast.success("Account created successfully");
-      get().connectSocket();
+      get().connectSocket?.();
     } catch (error) {
       toast.error(error.response?.data?.message || error.message);
     } finally {
@@ -47,8 +46,7 @@ export const useAuthStore = create((set, get) => ({
       const res = await axiosInstance.post("/auth/login", data);
       set({ authUser: res.data.user });
       toast.success("Logged in successfully");
-
-      get().connectSocket();
+      get().connectSocket?.();
     } catch (error) {
       toast.error(error.response?.data?.message || error.message);
     } finally {
@@ -61,7 +59,7 @@ export const useAuthStore = create((set, get) => ({
       await axiosInstance.post("/auth/logout");
       set({ authUser: null });
       toast.success("Logged out successfully");
-      get().disconnectSocket();
+      get().disconnectSocket?.();
     } catch (error) {
       toast.error(error.response?.data?.message || error.message);
     }
@@ -79,7 +77,4 @@ export const useAuthStore = create((set, get) => ({
       set({ isUpdatingProfile: false });
     }
   },
-
-
-  
 }));
