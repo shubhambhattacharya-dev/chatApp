@@ -4,7 +4,7 @@ import Homepage from "./pages/HomePage.jsx";
 import SignUpPage from "./pages/SignUpPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import SettingPage from "./pages/SettingPage.jsx";
-import ProfilePage from "./pages/profilePage.jsx";
+import ProfilePage from "./pages/ProfilePage.jsx"; // ✅ fixed filename casing (capital “P” is standard)
 import Navbar from "./components/Navbar.jsx";
 import { useAuthStore } from "./store/useAuthStore.js";
 import { Loader } from "lucide-react";
@@ -12,15 +12,22 @@ import { Toaster } from "react-hot-toast";
 import { useThemeStore } from "./store/useThemeStore.js";
 
 const App = () => {
-  const { authUser, checkAuth, isCheckingAuthLoading } = useAuthStore();
-  const {theme} =useThemeStore()
+  // ✅ Zustand destructuring
+  const { authUser, checkAuth, isCheckingAuth, onlineUsers } = useAuthStore();
+  const { theme } = useThemeStore();
   const location = useLocation();
 
+  // ✅ Call checkAuth only once (no infinite re-renders)
   useEffect(() => {
     checkAuth();
-  }, [checkAuth]);
+  }, []);
 
-  if (isCheckingAuthLoading && !authUser) {
+  // ✅ Debug logs
+  console.log("Auth User:", authUser);
+  console.log("Online Users:", onlineUsers);
+
+  // ✅ Loader condition fixed
+  if (isCheckingAuth && !authUser) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Loader className="size-10 animate-spin" />
@@ -30,6 +37,7 @@ const App = () => {
 
   return (
     <div data-theme={theme}>
+      {/* ✅ Show navbar only if not on login/signup */}
       {!["/login", "/signup"].includes(location.pathname) && <Navbar />}
 
       <Routes>
@@ -55,7 +63,7 @@ const App = () => {
         />
       </Routes>
 
-      <Toaster />
+      <Toaster position="top-right" />
     </div>
   );
 };

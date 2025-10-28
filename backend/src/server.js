@@ -8,11 +8,16 @@ import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js"
 import connectDB from "./db/connectMongoDB.js";
 import logger from "./lib/util/logger.js";
+import {app,server} from "./lib/util/socket.js"
 
 
 dotenv.config();
 
-const app = express();
+
+
+
+
+
 const PORT = process.env.PORT || 8000;
 
 // Validate essential environment variables on startup
@@ -51,7 +56,7 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   try {
     await connectDB();
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       logger.info(`🚀 Server is running on port ${PORT}`);
     });
   } catch (error) {

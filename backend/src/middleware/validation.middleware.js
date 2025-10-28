@@ -40,8 +40,7 @@ export const validateLogin = [
 
 export const validateUpdateProfile = [
   body('profilePic')
-    .notEmpty().withMessage('No profile picture provided.')
-    .isBase64().withMessage('Profile picture must be a valid base64 string.'),
+    .notEmpty().withMessage('No profile picture provided.'),
 
   handleValidationErrors,
 ];

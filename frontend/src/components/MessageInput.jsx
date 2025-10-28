@@ -50,6 +50,7 @@ const MessageInput = () => {
         imageUrl = uploadRes.data.imageUrl;
       }
 
+      console.log('Sending message data:', { text: text.trim(), imageUrl });
       await sendMessage({
         text: text.trim(),
         imageUrl,

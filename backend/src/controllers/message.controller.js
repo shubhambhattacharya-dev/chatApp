@@ -117,6 +117,7 @@ export const uploadImage = [
  */
 export const sendMessage = async (req, res) => {
     try {
+        console.log('Received sendMessage request:', { body: req.body, params: req.params });
         const { text, imageUrl } = req.body; // Changed from 'image' to 'imageUrl' for clarity
         const { id: receiverId } = req.params;
         const senderId = req.user._id;

@@ -196,12 +196,21 @@ export const updateProfile = async (req, res) => {
       });
     }
 
+    if (!profilePic) {
+      return res.status(400).json({
+        success: false,
+        message: 'No profile picture provided',
+      });
+    }
+
     let uploadResponse;
     try {
+      // Cloudinary's uploader.upload method can directly handle base64 data URIs.
       uploadResponse = await cloudinary.uploader.upload(profilePic, {
         folder: 'profile_pics',
         width: 150,
         crop: 'scale',
+        timeout: 60000, // Increase timeout to 60 seconds
       });
     } catch (error) {
       logger.error({ err: error }, 'Error uploading to Cloudinary');
@@ -220,16 +229,7 @@ export const updateProfile = async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'Profile updated successfully',
-      user: {
-        _id: updatedUser._id,
-        username: updatedUser.username,
-        fullName: updatedUser.fullName,
-        email: updatedUser.email,
-        profilePic: updatedUser.profilePic,
-        isOnline: updatedUser.isOnline,
-        lastSeen: updatedUser.lastSeen,
-        createdAt: updatedUser.createdAt,
-      },
+      user: updatedUser,
     });
   } catch (error) {
     logger.error({ err: error }, 'Update profile error');
