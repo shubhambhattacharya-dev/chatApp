@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/user.model.js';
+import logger from '../lib/util/logger.js';
 
 export const protectRoute = async (req, res, next) => {
     try {
@@ -34,7 +35,7 @@ export const protectRoute = async (req, res, next) => {
         next();
 
     } catch (error) {
-        console.error('Authentication error:', error);
+        logger.error({ err: error }, 'Authentication error');
 
         // Handle specific JWT errors
         if (error.name === 'TokenExpiredError') {

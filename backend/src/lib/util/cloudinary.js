@@ -2,6 +2,7 @@ import { v2 as cloudinary } from 'cloudinary';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import logger from './logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,12 +19,12 @@ const requiredEnvVars = [
 
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {
-    console.error(`❌ Missing required environment variable: ${envVar}`);
+    logger.error(`❌ Missing required environment variable: ${envVar}`);
     throw new Error(`Missing required environment variable: ${envVar}`);
   }
 }
 
-console.log('✅ Cloudinary configuration loaded successfully');
+logger.info('✅ Cloudinary configuration loaded successfully');
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,

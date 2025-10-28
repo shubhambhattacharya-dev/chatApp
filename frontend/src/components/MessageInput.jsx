@@ -1,13 +1,14 @@
 import { useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
-import { Image, Send, X } from "lucide-react";
+import { Image, Loader, Send, X } from "lucide-react";
 import toast from "react-hot-toast";
+import { axiosInstance } from "../lib/axios";
 
 const MessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
-  const { sendMessage } = useChatStore();
+  const { sendMessage, isSendingMessage } = useChatStore();
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -33,9 +34,25 @@ const MessageInput = () => {
     if (!text.trim() && !imagePreview) return;
 
     try {
+      let imageUrl = null;
+
+      if (imagePreview) {
+        // Upload image to backend first
+        const formData = new FormData();
+        // Convert base64 to blob
+        const response = await fetch(imagePreview);
+        const blob = await response.blob();
+        formData.append('image', blob);
+
+        const uploadRes = await axiosInstance.post('/messages/upload-image', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        imageUrl = uploadRes.data.imageUrl;
+      }
+
       await sendMessage({
         text: text.trim(),
-        image: imagePreview,
+        imageUrl,
       });
 
       // Clear form
@@ -44,6 +61,7 @@ const MessageInput = () => {
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
       console.error("Failed to send message:", error);
+      toast.error("Failed to send message. Please try again.");
     }
   };
 
@@ -76,12 +94,14 @@ const MessageInput = () => {
             className="w-full input input-bordered rounded-lg input-sm sm:input-md"
             placeholder="Type a message..."
             value={text}
+            disabled={isSendingMessage}
             onChange={(e) => setText(e.target.value)}
           />
           <input
             type="file"
             accept="image/*"
             className="hidden"
+            disabled={isSendingMessage}
             ref={fileInputRef}
             onChange={handleImageChange}
           />
@@ -90,17 +110,18 @@ const MessageInput = () => {
             type="button"
             className={`hidden sm:flex btn btn-circle
                      ${imagePreview ? "text-emerald-500" : "text-zinc-400"}`}
+            disabled={isSendingMessage}
             onClick={() => fileInputRef.current?.click()}
           >
             <Image size={20} />
           </button>
         </div>
         <button
-          type="submit"
-          className="btn btn-sm btn-circle"
-          disabled={!text.trim() && !imagePreview}
+          type='submit'
+          className='btn btn-sm sm:btn-md btn-circle'
+          disabled={isSendingMessage || (!text.trim() && !imagePreview)}
         >
-          <Send size={22} />
+          {isSendingMessage ? <Loader className='animate-spin' size={22} /> : <Send size={22} />}
         </button>
       </form>
     </div>

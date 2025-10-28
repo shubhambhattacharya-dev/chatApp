@@ -38,8 +38,8 @@ const messageSchema = new mongoose.Schema({
 });
 
 // Add indexes for better performance
-messageSchema.index({ senderId: 1, receiverId: 1 });
-messageSchema.index({ createdAt: -1 });
+messageSchema.index({ senderId: 1, receiverId: 1, createdAt: 1 });
+messageSchema.index({ receiverId: 1, senderId: 1, createdAt: 1 });
 
 // Virtual for conversation ID (to group messages between two users)
 messageSchema.virtual('conversationId').get(function() {
@@ -54,7 +54,7 @@ messageSchema.statics.getConversation = function(userId1, userId2, limit = 50) {
             { senderId: userId2, receiverId: userId1 }
         ]
     })
-    .sort({ createdAt: -1 })
+    .sort({ createdAt: 1 }) // Sort messages from oldest to newest
     .limit(limit)
     .populate('senderId', 'username fullName profilePic')
     .populate('receiverId', 'username fullName profilePic');

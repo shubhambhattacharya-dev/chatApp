@@ -3,43 +3,12 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { generateToken } from '../lib/util/generateToken.js';
 import cloudinary from '../lib/util/cloudinary.js';
+import logger from '../lib/util/logger.js';
 
 // ==================== SIGNUP ====================
 export const signup = async (req, res) => {
   try {
-    const { fullName, email, password } = req.body;
-
-    // Input validation
-    if (!fullName || !email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide all required fields',
-      });
-    }
-
-    // Email format validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide a valid email address',
-      });
-    }
-
-    // Password strength validation
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-    if (password.length < 8) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password must be at least 8 characters long',
-      });
-    }
-    if (!passwordRegex.test(password)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character',
-      });
-    }
+    const { fullName, email, password } = req.body; // Data is already validated and sanitized
 
     // Generate username and validate uniqueness
     const username = fullName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20);
@@ -96,7 +65,7 @@ export const signup = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Signup error:', error);
+    logger.error({ err: error }, 'Signup error');
 
     if (error.code === 11000) {
       const field = Object.keys(error.keyValue)[0];
@@ -125,14 +94,7 @@ export const signup = async (req, res) => {
 // ==================== LOGIN ====================
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide email and password',
-      });
-    }
+    const { email, password } = req.body; // Data is already validated
 
     const user = await User.findOne({
       email: email.toLowerCase(),
@@ -178,7 +140,7 @@ export const login = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Login error:', error);
+    logger.error({ err: error }, 'Login error');
     res.status(500).json({
       success: false,
       message: 'Internal server error during login',
@@ -213,7 +175,7 @@ export const logout = async (req, res) => {
       message: 'Logged out successfully',
     });
   } catch (error) {
-    console.error('Logout error:', error);
+    logger.error({ err: error }, 'Logout error');
     res.status(500).json({
       success: false,
       message: 'Internal server error during logout',
@@ -234,13 +196,6 @@ export const updateProfile = async (req, res) => {
       });
     }
 
-    if (!profilePic) {
-      return res.status(400).json({
-        success: false,
-        message: 'No profile picture provided',
-      });
-    }
-
     let uploadResponse;
     try {
       uploadResponse = await cloudinary.uploader.upload(profilePic, {
@@ -249,7 +204,7 @@ export const updateProfile = async (req, res) => {
         crop: 'scale',
       });
     } catch (error) {
-      console.error('Error uploading to Cloudinary:', error);
+      logger.error({ err: error }, 'Error uploading to Cloudinary');
       return res.status(500).json({
         success: false,
         message: 'Error uploading profile picture',
@@ -277,7 +232,7 @@ export const updateProfile = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Update profile error:', error);
+    logger.error({ err: error }, 'Update profile error');
     res.status(500).json({
       success: false,
       message: 'Internal server error during profile update',
@@ -287,48 +242,11 @@ export const updateProfile = async (req, res) => {
 
 // ==================== CHECK AUTH ====================
 export const checkAuth = async (req, res) => {
-  try {
-    const token = req.cookies.jwt;
-
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: 'No token provided',
-        user: null,
-      });
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    if (!decoded) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid token',
-        user: null,
-      });
-    }
-
-    const user = await User.findById(decoded.userId).select('-password');
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found',
-        user: null,
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'User is authenticated',
-      user,
-    });
-  } catch (error) {
-    console.error('Check auth error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error during authentication check',
-      user: null,
-    });
-  }
+	// The `protectRoute` middleware already handles token verification and attaches the user.
+	// If we reach this point, the user is authenticated.
+	res.status(200).json({
+		success: true,
+		message: 'User is authenticated',
+		user: req.user, // req.user is populated by protectRoute
+	});
 };

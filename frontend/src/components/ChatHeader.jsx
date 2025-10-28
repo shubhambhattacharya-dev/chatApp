@@ -27,8 +27,8 @@ const ChatHeader = () => {
         </div>
 
         {/* Close button */}
-        <button onClick={() => setSelectedUser(null)}>
-          <X />
+        <button className='btn btn-ghost btn-circle' onClick={() => setSelectedUser(null)}>
+          <X size={24} />
         </button>
       </div>
     </div>

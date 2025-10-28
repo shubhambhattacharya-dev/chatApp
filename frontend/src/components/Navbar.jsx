@@ -6,12 +6,9 @@ import { useState, useEffect } from "react";
 const Navbar = () => {
   const { logout, authUser } = useAuthStore();
   const location = useLocation();
-  const [mounted, setMounted] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-    
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
     };
@@ -27,10 +24,10 @@ const Navbar = () => {
   return (
     <header
       className={`fixed w-full top-0 z-50 transition-all duration-500 ${
-        isScrolled 
-          ? 'bg-base-100/95 backdrop-blur-xl border-b border-base-300/50 shadow-lg' 
+        isScrolled
+          ? 'bg-base-100/95 backdrop-blur-xl border-b border-base-300/50 shadow-lg'
           : 'bg-base-100/80 backdrop-blur-lg border-b border-base-300/20'
-      } ${mounted ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'}`}
+      } translate-y-0 opacity-100`}
     >
       <div className="container mx-auto px-4 h-20">
         <div className="flex items-center justify-between h-full">
