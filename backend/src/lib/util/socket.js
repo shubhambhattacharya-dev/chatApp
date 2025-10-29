@@ -1,47 +1,63 @@
-import { Server } from "socket.io"; // ✅ correct import
-import http from "http";
+import { Server } from "socket.io";
+import jwt from "jsonwebtoken";
 import logger from "./logger.js";
-import express from "express";
+import cookieParser from "cookie-parser";
 
-const app = express();
+let io;
 
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: ["http://localhost:3000"],
-    methods: ["GET", "POST"],
-    credentials: true,
-  },
-});
-
-// ✅ Track online users
 const userSocketMap = {}; // { userId: socketId }
 
-// ✅ Listen for incoming connections
-io.on("connection", (socket) => {
-  console.log("A user connected:", socket.id);
-  const userId = socket.handshake.query.userId;
+export const getReceiverSocketId = (userId) => userSocketMap[userId];
 
-  logger.info(
-    `User connected: ${socket.id}, userId: ${userId || "unknown"}`
-  );
+export const initSocket = (server) => {
+	io = new Server(server, {
+		cors: {
+			origin: ["http://localhost:3000", "http://localhost:3001"],
+			credentials: true,
+		},
+	});
 
-  // ✅ Mark user as online
-  if (userId) userSocketMap[userId] = socket.id;
+	// Use cookie-parser middleware for socket.io
+	io.engine.use(cookieParser());
 
-  // ✅ Emit updated online users list to everyone
-  io.emit("getOnlineUsers", Object.keys(userSocketMap)); 
+	io.use((socket, next) => {
+		const token = socket.request.cookies.jwt;
 
-  // ✅ Handle user disconnect
-  socket.on("disconnect", () => {
-    console.log("A user disconnected:", socket.id);
-    logger.info(`User disconnected: ${socket.id}`);
+		if (!token) {
+			logger.warn("Socket Authentication error: No token provided.");
+			return next(new Error("Authentication error: No token provided."));
+		}
 
-    if (userId) {
-      delete userSocketMap[userId];
-      io.emit("getOnlineUsers", Object.keys(userSocketMap)); 
-    }
-  });
-});
+		jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+			if (err) {
+				logger.error("Socket Authentication error: Invalid token.");
+				return next(new Error("Authentication error: Invalid token."));
+			}
+			socket.user = decoded;
+			next();
+		});
+	});
 
-export { io, server, app };
+	io.on("connection", (socket) => {
+		const userId = socket.user.userId;
+		logger.info(`User connected: ${socket.id}, userId: ${userId}`);
+
+		if (userId) {
+			userSocketMap[userId] = socket.id;
+		}
+
+		io.emit("getOnlineUsers", Object.keys(userSocketMap));
+
+		socket.on("disconnect", () => {
+			logger.info(`User disconnected: ${socket.id}, userId: ${userId}`);
+			if (userId) {
+				delete userSocketMap[userId];
+				io.emit("getOnlineUsers", Object.keys(userSocketMap));
+			}
+		});
+	});
+
+	return io;
+};
+
+export { io };

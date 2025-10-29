@@ -1,22 +1,20 @@
 import express from "express";
+import http from "http";
 import dotenv from "dotenv";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 
-
 import authRoutes from "./routes/auth.route.js";
-import messageRoutes from "./routes/message.route.js"
+import messageRoutes from "./routes/message.route.js";
 import connectDB from "./db/connectMongoDB.js";
 import logger from "./lib/util/logger.js";
-import {app,server} from "./lib/util/socket.js"
-
+import { initSocket } from "./lib/util/socket.js";
 
 dotenv.config();
 
-
-
-
-
+const app = express();
+const server = http.createServer(app);
+initSocket(server);
 
 const PORT = process.env.PORT || 8000;
 
@@ -61,7 +59,7 @@ const startServer = async () => {
     });
   } catch (error) {
     logger.fatal({ err: error }, "💥 Failed to start server");
-    process.exit(1); // Exit gracefully after logging the fatal error
+    process.exit(1);
   }
 };
 

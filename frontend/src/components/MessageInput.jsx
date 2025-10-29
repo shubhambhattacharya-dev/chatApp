@@ -52,7 +52,7 @@ const MessageInput = () => {
 
       console.log('Sending message data:', { text: text.trim(), imageUrl });
       await sendMessage({
-        text: text.trim(),
+        message: text.trim(),
         imageUrl,
       });
 

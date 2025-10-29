@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { axiosInstance } from "../lib/axios.js";
 import toast from "react-hot-toast";
+import { useChatStore } from "./useChatStore.js";
 import { io } from "socket.io-client";
 
 const BASE_URL =
@@ -62,11 +63,13 @@ export const useAuthStore = create((set, get) => ({
   logout: async () => {
     try {
       await axiosInstance.post("/auth/logout");
-      get().disconnectSocket?.(); // disconnect first
+    } catch (error) {
+      // Don't show an error to the user, but log it for debugging
+      console.error("Error during server-side logout:", error.response?.data?.message || error.message);
+    } finally {
+      get().disconnectSocket?.();
       set({ authUser: null });
       toast.success("Logged out successfully");
-    } catch (error) {
-      toast.error(error.response?.data?.message || error.message);
     }
   },
 
@@ -89,27 +92,37 @@ export const useAuthStore = create((set, get) => ({
     const { authUser, socket } = get();
     if (!authUser || socket?.connected) return;
 
-    console.log("Connecting socket for user:", authUser._id);
     const newSocket = io(BASE_URL, {
-      query: { userId: authUser._id },
-      withCredentials: true,
+      withCredentials: true, // Send cookies with the connection request
     });
 
     newSocket.on("connect", () => {
-      console.log("✅ Socket connected:", newSocket.id);
+      // Now handled by the online users listener
     });
 
     newSocket.on("connect_error", (error) => {
-      console.error("❌ Socket connection error:", error.message);
+      toast.error(`Connection failed: ${error.message}`);
     });
 
     newSocket.on("disconnect", (reason) => {
-      console.log("⚠️ Socket disconnected:", reason);
+      if (reason !== "io client disconnect") {
+        toast.error("Disconnected from the server");
+      }
     });
 
     // ✅ Online users update
     newSocket.on("getOnlineUsers", (userIds) => {
       set({ onlineUsers: userIds });
+    });
+
+    // ✅ New message listener
+    newSocket.on("newMessage", (newMessage) => {
+      const { selectedUser, messages } = useChatStore.getState();
+      // Only add the message if the chat is currently open
+      if (selectedUser?._id === newMessage.senderId._id) {
+        useChatStore.setState({ messages: [...messages, newMessage] });
+      }
+      // Optionally, add a notification for messages received when the chat is not open
     });
 
     set({ socket: newSocket });
@@ -118,9 +131,15 @@ export const useAuthStore = create((set, get) => ({
   // ✅ Disconnect Socket
   disconnectSocket: () => {
     const socket = get().socket;
-    if (socket?.connected) {
-      socket.disconnect();
-      console.log("  Socket disconnected manually");
+    if (socket) {
+	  socket.off("connect");
+      socket.off("connect_error");
+      socket.off("disconnect");
+      socket.off("getOnlineUsers");
+      socket.off("newMessage");
+      if (socket.connected) {
+        socket.disconnect();
+      }
     }
     set({ socket: null, onlineUsers: [] });
   },
