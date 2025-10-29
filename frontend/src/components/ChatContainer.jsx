@@ -1,48 +1,33 @@
 import { useEffect, useRef } from 'react'
 import { useChatStore } from '../store/useChatStore'
-import { useAuthStore } from '../store/useAuthStore'
 import ChatHeader from './ChatHeader'
 import MessageInput from './MessageInput'
 import MessageSkeleton from './skeletons/MessageSkeleton'
+import { useAuthStore } from '../store/useAuthStore'
 import { formatMessageTime } from '../lib/util'
 
 const ChatContainer = () => {
-  const {
-    getMessages,
-    isMessagesLoading,
-    selectedUser,
-    messages,
-    unsubscribeFromMessage,
-    subscribeToMessage,
-  } = useChatStore()
-
+  const { getMessages, isMessagesLoading, selectedUser, messages } = useChatStore()
   const { authUser } = useAuthStore()
-  const messageEndRef = useRef(null)
+  const messageEndRef = useRef(null);
 
-  // 🟢 Fetch and subscribe to messages
   useEffect(() => {
-    if (!selectedUser?._id) return
+    const controller = new AbortController();
+    const signal = controller.signal;
 
-    const controller = new AbortController()
-    const signal = controller.signal
-
-    getMessages(selectedUser._id, { signal })
-    subscribeToMessage(selectedUser._id)
+    if (selectedUser?._id) {
+      getMessages(selectedUser._id, { signal })
+    }
 
     return () => {
-      unsubscribeFromMessage()
-      controller.abort()
-    }
-  }, [selectedUser?._id, getMessages, subscribeToMessage, unsubscribeFromMessage])
+      controller.abort();
+    };
+  }, [selectedUser?._id, getMessages])
 
-  // 🟢 Auto-scroll when new messages arrive
   useEffect(() => {
-    if (messageEndRef.current) {
-      messageEndRef.current.scrollIntoView({ behavior: 'smooth' })
-    }
-  }, [messages.length])
+    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-  // 🟡 Loading skeleton
   if (isMessagesLoading) {
     return (
       <div className='flex-1 flex flex-col overflow-auto'>
@@ -53,27 +38,24 @@ const ChatContainer = () => {
     )
   }
 
-  // 🟢 Main chat UI
   return (
     <div className='flex-1 flex flex-col overflow-auto'>
       <ChatHeader />
-      <div className='flex-1 overflow-y-auto p-4 space-y-4'>
-        {messages.filter(Boolean).map((message) => (
+      <div className='flex-1 overflow-y-auto p-4 space-y-4' ref={messageEndRef}>
+        {messages.map((message) => (
           <div
-            key={message._id || message.tempId}
-            className={`chat ${
-              message.senderId?._id === authUser._id ? 'chat-end' : 'chat-start'
-            }`}
+            key={message._id}
+            className={`chat ${message.senderId === authUser._id ? 'chat-end' : 'chat-start'}`}
           >
             <div className='chat-image avatar'>
               <div className='size-10 rounded-full border'>
                 <img
                   src={
-                    message.senderId?._id === authUser._id
+                    message.senderId === authUser._id
                       ? authUser.profilePic || '/avatar.png'
                       : selectedUser.profilePic || '/avatar.png'
                   }
-                  alt='profile'
+                  alt='profile pic'
                 />
               </div>
             </div>
@@ -85,10 +67,10 @@ const ChatContainer = () => {
             </div>
 
             <div className='chat-bubble flex flex-col'>
-              {message.attachments?.length > 0 && (
+              {message.attachments && message.attachments.length > 0 && (
                 <img
                   src={message.attachments[0].url}
-                  alt='attachment'
+                  alt='attachments'
                   className='sm:max-w-[200px] rounded-md mb-2'
                 />
               )}
@@ -96,7 +78,6 @@ const ChatContainer = () => {
             </div>
           </div>
         ))}
-        <div ref={messageEndRef} />
       </div>
       <MessageInput />
     </div>

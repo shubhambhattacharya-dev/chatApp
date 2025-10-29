@@ -1,63 +1,47 @@
-import { Server } from "socket.io";
-import jwt from "jsonwebtoken";
+import { Server } from "socket.io"; // ✅ correct import
+import http from "http";
 import logger from "./logger.js";
-import cookieParser from "cookie-parser";
+import express from "express";
 
-let io;
+const app = express();
 
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: ["http://localhost:3000"],
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+});
+
+// ✅ Track online users
 const userSocketMap = {}; // { userId: socketId }
 
-export const getReceiverSocketId = (userId) => userSocketMap[userId];
+// ✅ Listen for incoming connections
+io.on("connection", (socket) => {
+  console.log("A user connected:", socket.id);
+  const userId = socket.handshake.query.userId;
 
-export const initSocket = (server) => {
-	io = new Server(server, {
-		cors: {
-			origin: ["http://localhost:3000", "http://localhost:3001"],
-			credentials: true,
-		},
-	});
+  logger.info(
+    `User connected: ${socket.id}, userId: ${userId || "unknown"}`
+  );
 
-	// Use cookie-parser middleware for socket.io
-	io.engine.use(cookieParser());
+  // ✅ Mark user as online
+  if (userId) userSocketMap[userId] = socket.id;
 
-	io.use((socket, next) => {
-		const token = socket.request.cookies.jwt;
+  // ✅ Emit updated online users list to everyone
+  io.emit("getOnlineUsers", Object.keys(userSocketMap)); 
 
-		if (!token) {
-			logger.warn("Socket Authentication error: No token provided.");
-			return next(new Error("Authentication error: No token provided."));
-		}
+  // ✅ Handle user disconnect
+  socket.on("disconnect", () => {
+    console.log("A user disconnected:", socket.id);
+    logger.info(`User disconnected: ${socket.id}`);
 
-		jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-			if (err) {
-				logger.error("Socket Authentication error: Invalid token.");
-				return next(new Error("Authentication error: Invalid token."));
-			}
-			socket.user = decoded;
-			next();
-		});
-	});
+    if (userId) {
+      delete userSocketMap[userId];
+      io.emit("getOnlineUsers", Object.keys(userSocketMap)); 
+    }
+  });
+});
 
-	io.on("connection", (socket) => {
-		const userId = socket.user.userId;
-		logger.info(`User connected: ${socket.id}, userId: ${userId}`);
-
-		if (userId) {
-			userSocketMap[userId] = socket.id;
-		}
-
-		io.emit("getOnlineUsers", Object.keys(userSocketMap));
-
-		socket.on("disconnect", () => {
-			logger.info(`User disconnected: ${socket.id}, userId: ${userId}`);
-			if (userId) {
-				delete userSocketMap[userId];
-				io.emit("getOnlineUsers", Object.keys(userSocketMap));
-			}
-		});
-	});
-
-	return io;
-};
-
-export { io };
+export { io, server, app };

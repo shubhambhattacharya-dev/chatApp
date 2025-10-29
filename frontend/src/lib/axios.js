@@ -42,20 +42,15 @@ axiosInstance.interceptors.response.use(
             return Promise.reject(error);
         }
 
-        const isCheckAuth401 = error.response?.status === 401 && error.config.url.includes('/auth/check-auth');
-
         if (import.meta.env.DEV) {
-            // Don't log 401 from check-auth as a full-blown error, it's an expected state.
-            if (!isCheckAuth401) {
-                console.error('❌ API Error:', {
-                    status: error.response?.status,
-                    url: error.config?.url,
-                    message: error.response?.data?.message || error.message
-                });
-            }
+            console.error('❌ API Error:', {
+                status: error.response?.status,
+                url: error.config?.url,
+                message: error.response?.data?.message || error.message
+            });
         }
 
-        if (error.response?.status === 401 && !isCheckAuth401) {
+        if (error.response?.status === 401 && !error.config.url.includes('/auth/check-auth')) {
             // Delegate logout to the auth store to handle cleanup and redirection
             useAuthStore.getState().logout();
         } else if (error.response?.status === 403) {
