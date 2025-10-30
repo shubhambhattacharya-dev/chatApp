@@ -19,9 +19,27 @@ const messageSchema = new mongoose.Schema({
     attachments: [{
         type: {
             type: String,
-            enum: ['image', 'file']
+            enum: ['image', 'file'],
+            required: true
         },
         url: {
+            type: String,
+            required: true
+        },
+        mimeType: {
+            type: String,
+            required: true
+        },
+        fileName: {
+            type: String,
+            required: true
+        },
+        size: {
+            type: Number,
+            required: true,
+            min: 0
+        },
+        cloudinaryId: {
             type: String
         }
     }],
@@ -37,17 +55,20 @@ const messageSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Add indexes for better performance
-messageSchema.index({ senderId: 1, receiverId: 1, createdAt: 1 });
-messageSchema.index({ receiverId: 1, senderId: 1, createdAt: 1 });
+// Add compound indexes for better performance
+messageSchema.index({ senderId: 1, receiverId: 1, createdAt: -1 });
+messageSchema.index({ receiverId: 1, senderId: 1, createdAt: -1 });
+messageSchema.index({ createdAt: -1 }); // For general sorting
+messageSchema.index({ senderId: 1, createdAt: -1 }); // For user's sent messages
+messageSchema.index({ receiverId: 1, createdAt: -1 }); // For user's received messages
 
 // Virtual for conversation ID (to group messages between two users)
 messageSchema.virtual('conversationId').get(function() {
     return [this.senderId, this.receiverId].sort().join('_');
 });
 
-// Static method to get conversation between two users
-messageSchema.statics.getConversation = function(userId1, userId2, limit = 50) {
+// Static method to get conversation between two users with pagination
+messageSchema.statics.getConversation = function(userId1, userId2, limit = 50, skip = 0) {
     return this.find({
         $or: [
             { senderId: userId1, receiverId: userId2 },
@@ -55,9 +76,30 @@ messageSchema.statics.getConversation = function(userId1, userId2, limit = 50) {
         ]
     })
     .sort({ createdAt: 1 }) // Sort messages from oldest to newest
+    .skip(skip)
     .limit(limit)
     .populate('senderId', 'username fullName profilePic')
     .populate('receiverId', 'username fullName profilePic');
+};
+
+// Static method to get conversation with cursor-based pagination
+messageSchema.statics.getConversationPaginated = function(userId1, userId2, before, limit = 50) {
+    const query = {
+        $or: [
+            { senderId: userId1, receiverId: userId2 },
+            { senderId: userId2, receiverId: userId1 }
+        ]
+    };
+
+    if (before) {
+        query.createdAt = { $lt: before };
+    }
+
+    return this.find(query)
+        .sort({ createdAt: -1 }) // Newest first for pagination
+        .limit(limit)
+        .populate('senderId', 'username fullName profilePic')
+        .populate('receiverId', 'username fullName profilePic');
 };
 
 // Instance method to mark as read

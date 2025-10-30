@@ -20,6 +20,6 @@ const messageLimiter = rateLimit({
 router.get('/users',protectRoute,getUsersForSidebar);
 router.get('/:id',protectRoute,getMessagesBetweenUsers);
 router.post('/send/:id', protectRoute, messageLimiter, validateSendMessage, sendMessage);
-router.post('/upload-image', protectRoute, messageLimiter, ...uploadImage);
+router.post('/upload-image', protectRoute, messageLimiter, uploadImage);
 
 export default router;
