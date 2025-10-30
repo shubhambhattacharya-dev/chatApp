@@ -222,20 +222,46 @@ export const updateProfile = async (req, res) => {
     // Check if profilePic is in form data (file upload)
     if (req.file) {
       try {
-        const uploadResponse = await cloudinary.uploader.upload_stream(
-          {
-            folder: 'profile_pics',
-            width: 150,
-            crop: 'scale',
-            timeout: 60000,
-          },
-          (error, result) => {
-            if (error) throw error;
-            profilePicUrl = result.secure_url;
-          }
-        );
+        // Validate file type and size for profile pictures
+        const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        if (!allowedMimeTypes.includes(req.file.mimetype)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid file type. Only JPEG, PNG, and WebP images are allowed for profile pictures.'
+            });
+        }
 
-        uploadResponse.end(req.file.buffer);
+        const maxProfilePicSize = 2 * 1024 * 1024; // 2MB for profile pics
+        if (req.file.size > maxProfilePicSize) {
+            return res.status(400).json({
+                success: false,
+                message: 'Profile picture too large. Maximum allowed size is 2MB.'
+            });
+        }
+
+        const uploadResponse = await new Promise((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+                {
+                    folder: 'profile_pics',
+                    width: 150,
+                    crop: 'scale',
+                    timeout: 60000,
+                },
+                (error, result) => {
+                    if (error) return reject(error);
+                    resolve(result);
+                }
+            );
+
+            stream.on('error', (error) => {
+                logger.error({ err: error }, 'Cloudinary profile pic upload error');
+                reject(error);
+            });
+
+            stream.end(req.file.buffer);
+        });
+
+        profilePicUrl = uploadResponse.secure_url;
       } catch (error) {
         logger.error({ err: error }, 'Error uploading to Cloudinary');
         return res.status(500).json({
@@ -246,6 +272,23 @@ export const updateProfile = async (req, res) => {
     } else if (req.body.profilePic) {
       // Handle base64 data URI
       try {
+        // Validate base64 data
+        if (!req.body.profilePic.startsWith('data:image/')) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid image format. Must be a valid data URL.'
+          });
+        }
+
+        // Check approximate size (base64 is ~33% larger than binary)
+        const approxSize = (req.body.profilePic.length * 0.75);
+        if (approxSize > 2 * 1024 * 1024) { // 2MB
+          return res.status(400).json({
+            success: false,
+            message: 'Profile picture too large. Maximum allowed size is 2MB.'
+          });
+        }
+
         const uploadResponse = await cloudinary.uploader.upload(req.body.profilePic, {
           folder: 'profile_pics',
           width: 150,
@@ -254,7 +297,7 @@ export const updateProfile = async (req, res) => {
         });
         profilePicUrl = uploadResponse.secure_url;
       } catch (error) {
-        logger.error({ err: error }, 'Error uploading to Cloudinary');
+        logger.error({ err: error }, 'Error uploading base64 profile picture to Cloudinary');
         return res.status(500).json({
           success: false,
           message: 'Error uploading profile picture',
