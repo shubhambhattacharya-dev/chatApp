@@ -2,7 +2,8 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-
+import helmet from "helmet";
+import morgan from "morgan";
 
 import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js"
@@ -13,15 +14,18 @@ import {app,server} from "./lib/util/socket.js"
 
 dotenv.config();
 
-
-
-
-
-
-const PORT = process.env.PORT || 8000;
+const PORT = Number(process.env.PORT) || 8000;
 
 // Validate essential environment variables on startup
-const requiredEnv = ['MONGO_DB', 'JWT_SECRET'];
+const requiredEnv = [
+  'MONGODB_URI',
+  'JWT_SECRET',
+  'FRONTEND_URL',
+  'CLOUDINARY_CLOUD_NAME',
+  'CLOUDINARY_API_KEY',
+  'CLOUDINARY_API_SECRET'
+];
+
 for (const envVar of requiredEnv) {
   if (!process.env[envVar]) {
     logger.fatal(`Missing required environment variable: ${envVar}`);
@@ -30,11 +34,27 @@ for (const envVar of requiredEnv) {
 }
 
 // Middleware
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+})); // Security headers
+app.use(morgan('combined')); // HTTP request logging
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+
 app.use(cors({
-  origin: ["http://localhost:3000", "http://localhost:3001"], // Your frontend URLs
+  origin: function(origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
+  optionsSuccessStatus: 200
 }));
-app.use(express.json({ limit: "5mb" })); // To parse JSON payloads
+app.use(express.json({ limit: "10kb" })); // Reasonable limit for JSON payloads to prevent DoS
 app.use(cookieParser());
 
 // Routes
@@ -53,16 +73,24 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: "Internal Server Error" });
 });
 
-const startServer = async () => {
+const startServer = async (port) => {
   try {
     await connectDB();
-    server.listen(PORT, () => {
-      logger.info(`🚀 Server is running on port ${PORT}`);
+    await new Promise((resolve, reject) => {
+      server.listen(port, resolve);
+      server.on('error', reject);
     });
+    logger.info(`🚀 Server is running on port ${port}`);
   } catch (error) {
-    logger.fatal({ err: error }, "💥 Failed to start server");
-    process.exit(1); // Exit gracefully after logging the fatal error
+    if (error.code === 'EADDRINUSE') {
+      logger.warn(`💥 Port ${port} is already in use, trying port ${port + 1}...`);
+      // Recursively try next port
+      await startServer(port + 1);
+    } else {
+      logger.fatal({ err: error }, "💥 Failed to start server");
+      process.exit(1); // Exit gracefully after logging the fatal error
+    }
   }
 };
 
-startServer();
+startServer(PORT);

@@ -31,9 +31,9 @@ export const signup = async (req, res) => {
       });
     }
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    // Hash password with configurable salt rounds
+    const saltRounds = Number(process.env.BCRYPT_ROUNDS) || 12;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     // Create new user
     const newUser = new User({
@@ -98,7 +98,16 @@ export const login = async (req, res) => {
 
     const user = await User.findOne({
       email: email.toLowerCase(),
-    });
+    }).select('+password +loginAttempts +lockUntil');
+
+    // Check if account is locked
+    if (user?.isLocked()) {
+      const lockTimeLeft = Math.ceil((user.lockUntil - Date.now()) / 1000 / 60);
+      return res.status(423).json({
+        success: false,
+        message: `Account temporarily locked. Try again in ${lockTimeLeft} minutes.`,
+      });
+    }
 
     if (!user) {
       return res.status(400).json({
@@ -111,11 +120,24 @@ export const login = async (req, res) => {
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
+      // Increment failed attempts
+      await user.incLoginAttempts();
+
+      if (user.loginAttempts >= 5) {
+        return res.status(423).json({
+          success: false,
+          message: 'Account locked due to too many failed attempts. Try again in 30 minutes.',
+        });
+      }
+
       return res.status(400).json({
         success: false,
         message: 'Invalid credentials',
       });
     }
+
+    // Reset login attempts on successful login
+    await user.resetLoginAttempts();
 
     // Update status
     user.isOnline = true;
@@ -186,7 +208,6 @@ export const logout = async (req, res) => {
 // ==================== UPDATE PROFILE ====================
 export const updateProfile = async (req, res) => {
   try {
-    const { profilePic } = req.body;
     const userId = req.user._id;
 
     if (!userId) {
@@ -196,33 +217,61 @@ export const updateProfile = async (req, res) => {
       });
     }
 
-    if (!profilePic) {
+    let profilePicUrl = null;
+
+    // Check if profilePic is in form data (file upload)
+    if (req.file) {
+      try {
+        const uploadResponse = await cloudinary.uploader.upload_stream(
+          {
+            folder: 'profile_pics',
+            width: 150,
+            crop: 'scale',
+            timeout: 60000,
+          },
+          (error, result) => {
+            if (error) throw error;
+            profilePicUrl = result.secure_url;
+          }
+        );
+
+        uploadResponse.end(req.file.buffer);
+      } catch (error) {
+        logger.error({ err: error }, 'Error uploading to Cloudinary');
+        return res.status(500).json({
+          success: false,
+          message: 'Error uploading profile picture',
+        });
+      }
+    } else if (req.body.profilePic) {
+      // Handle base64 data URI
+      try {
+        const uploadResponse = await cloudinary.uploader.upload(req.body.profilePic, {
+          folder: 'profile_pics',
+          width: 150,
+          crop: 'scale',
+          timeout: 60000,
+        });
+        profilePicUrl = uploadResponse.secure_url;
+      } catch (error) {
+        logger.error({ err: error }, 'Error uploading to Cloudinary');
+        return res.status(500).json({
+          success: false,
+          message: 'Error uploading profile picture',
+        });
+      }
+    }
+
+    if (!profilePicUrl) {
       return res.status(400).json({
         success: false,
         message: 'No profile picture provided',
       });
     }
 
-    let uploadResponse;
-    try {
-      // Cloudinary's uploader.upload method can directly handle base64 data URIs.
-      uploadResponse = await cloudinary.uploader.upload(profilePic, {
-        folder: 'profile_pics',
-        width: 150,
-        crop: 'scale',
-        timeout: 60000, // Increase timeout to 60 seconds
-      });
-    } catch (error) {
-      logger.error({ err: error }, 'Error uploading to Cloudinary');
-      return res.status(500).json({
-        success: false,
-        message: 'Error uploading profile picture',
-      });
-    }
-
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { profilePic: uploadResponse.secure_url },
+      { profilePic: profilePicUrl },
       { new: true }
     ).select('-password');
 
