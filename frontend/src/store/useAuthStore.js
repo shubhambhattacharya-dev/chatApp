@@ -83,7 +83,16 @@ export const useAuthStore = create((set, get) => ({
     set({ isUpdatingProfile: true });
     try {
       const res = await axiosInstance.put("/auth/update-profile", data);
-      set({ authUser: res.data.user });
+      const updatedUser = res.data.user;
+      set({ authUser: updatedUser });
+
+      const { selectedUser, setSelectedUser, users, setUsers } = useChatStore.getState();
+      if (selectedUser?._id === updatedUser._id) {
+        setSelectedUser(updatedUser);
+      }
+      const newUsers = users.map(u => u._id === updatedUser._id ? updatedUser : u);
+      setUsers(newUsers);
+
       toast.success("Profile updated successfully");
       return res.data; // Return response for frontend to use
     } catch (error) {

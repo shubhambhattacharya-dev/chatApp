@@ -10,6 +10,7 @@ export const useChatStore = create((set, get) => ({
   onlineUsers: [],
   typingUsers: [], // Track users who are typing
 
+  setUsers: (users) => set({ users }),
   setOnlineUsers: (onlineUsers) => set({ onlineUsers }),
   selectedUser: JSON.parse(localStorage.getItem("selectedUser")) || null,
   isUsersLoading: false,

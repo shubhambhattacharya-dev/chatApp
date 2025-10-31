@@ -11,6 +11,7 @@ const ChatHeader = () => {
           {/* Avatar */}
           <div className="avatar">
             <div className="size-10 rounded-full relative">
+              <img src={selectedUser.profilePic || "/avatar.png"} alt={selectedUser.fullName} className="w-full h-full object-cover rounded-full" />
             <span
               className={`absolute bottom-0 right-0 size-3 rounded-full ring-2 ring-zinc-900 ${
                 onlineUsers.includes(selectedUser._id) ? "bg-green-500" : "bg-gray-500"
