@@ -11,7 +11,7 @@ const getBaseURL = () => {
   if (import.meta.env.MODE === "production") {
     throw new Error("VITE_BACKEND_URL is not defined in production environment.");
   }
-  return "http://localhost:8000";
+  return import.meta.env.MODE === "development" ? "http://localhost:8000" :"/";
 };
 
 export const useAuthStore = create((set, get) => ({

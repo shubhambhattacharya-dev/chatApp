@@ -1,16 +1,21 @@
 import express from "express";
 import http from "http";
 
+
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import path from "path";
 
 import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js";
 import connectDB from "./db/connectMongoDB.js";
 import logger from "./lib/util/logger.js";
 import { initSocket } from "./lib/util/socket.js";
+import dotenv from "dotenv";
+dotenv.config();
+
 
 const app = express();
 const server = http.createServer(app);
@@ -18,6 +23,9 @@ server.setMaxListeners(50); // Increase max listeners to prevent memory leak war
 initSocket(server);
 
 const PORT = process.env.PORT || 8000;
+const __dirname = path.resolve();
+
+
 
 // Validate essential environment variables on startup
 const requiredEnv = ['MONGO_DB', 'JWT_SECRET', 'CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET', 'NODE_ENV'];
@@ -27,6 +35,7 @@ for (const envVar of requiredEnv) {
     process.exit(1);
   }
 }
+
 
 // Apply security middleware
 app.use(helmet());
@@ -48,6 +57,13 @@ app.use(cookieParser());
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
+
+if(process.env.NODE_ENV === 'production'){
+  app.use(express.static(path.join(__dirname, '/frontend/dist')));
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '/frontend/dist/index.html'))});
+
+}
 
 // Error Handling Middleware
 // 1. 404 Not Found Handler

@@ -8,7 +8,7 @@ const API_BASE_URL = (() => {
   if (import.meta.env.MODE === "production") {
     throw new Error("VITE_API_BASE_URL is not defined in production environment.");
   }
-  return "http://localhost:8000/api";
+  return import.meta.env.MODE === "development" ? "http://localhost:8000/api" : "/api";
 })();
 
 export const axiosInstance = axios.create({
