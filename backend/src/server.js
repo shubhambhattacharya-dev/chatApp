@@ -50,14 +50,10 @@ app.use(limiter);
 app.use(express.json({ limit: "5mb" })); // To parse JSON payloads
 app.use(cookieParser());
 
-// Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/messages", messageRoutes);
-
 // CORS configuration
 if(process.env.NODE_ENV === 'production'){
   app.use(cors({
-    origin: process.env.CORS_ORIGIN || "https://your-render-app-url.onrender.com",
+    origin: process.env.CORS_ORIGIN || "https://justchat-bkal.onrender.com",
     credentials: true,
   }));
 } else {
@@ -67,10 +63,14 @@ if(process.env.NODE_ENV === 'production'){
   }));
 }
 
+// Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/messages", messageRoutes);
+
 // Production static file serving - must be before error handlers
 if(process.env.NODE_ENV === 'production'){
   app.use(express.static(path.join(__dirname, '../frontend/dist')));
-  app.get('*', (req, res) => {
+  app.get('/*', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
   });
 }
