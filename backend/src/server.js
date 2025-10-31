@@ -78,11 +78,10 @@ app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 
 // Production static file serving - must be before error handlers
-if (process.env.NODE_ENV === "production") {
-  const frontendDistPath = path.join(__dirname, "../frontend/dist");
-  app.use(express.static(frontendDistPath));
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(frontendDistPath, "index.html"));
+if(process.env.NODE_ENV === 'production'){
+  app.use(express.static(path.join(__dirname, '../frontend/dist')));
+  app.get(/^\/(?!api).*/, (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
   });
 }
 
