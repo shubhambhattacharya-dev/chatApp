@@ -67,6 +67,14 @@ if(process.env.NODE_ENV === 'production'){
   }));
 }
 
+// Production static file serving - must be before error handlers
+if(process.env.NODE_ENV === 'production'){
+  app.use(express.static(path.join(__dirname, '../frontend/dist')));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+  });
+}
+
 // Error Handling Middleware
 // 1. 404 Not Found Handler
 app.use((req, res, next) => {
@@ -85,14 +93,6 @@ app.use((err, req, res, next) => {
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 });
-
-// Production static file serving - must be after all API routes and error handlers
-if(process.env.NODE_ENV === 'production'){
-  app.use(express.static(path.join(__dirname, '../frontend/dist')));
-  app.use((req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
-  });
-}
 
 const startServer = async () => {
   try {
