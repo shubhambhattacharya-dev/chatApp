@@ -1,14 +1,15 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { Image, Loader, Send, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { axiosInstance } from "../lib/axios";
 
-const MessageInput = () => {
+const MessageInput = ({ typingUsers = [] }) => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
-  const { sendMessage, isSendingMessage } = useChatStore();
+  const typingTimeoutRef = useRef(null);
+  const { sendMessage, isSendingMessage, startTyping, stopTyping, selectedUser } = useChatStore();
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -32,6 +33,9 @@ const MessageInput = () => {
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!text.trim() && !imagePreview) return;
+
+    // Stop typing indicator when sending message
+    stopTyping();
 
     try {
       let imageUrl = null;
@@ -74,6 +78,13 @@ const MessageInput = () => {
 
   return (
     <div className="p-4 w-full">
+      {/* Typing Indicator */}
+      {typingUsers.length > 0 && selectedUser && (
+        <div className="mb-2 text-sm text-gray-500 italic">
+          {selectedUser.fullName} is typing...
+        </div>
+      )}
+
       {imagePreview && (
         <div className="mb-3 flex items-center gap-2">
           <div className="relative">
@@ -102,7 +113,28 @@ const MessageInput = () => {
             placeholder="Type a message..."
             value={text}
             disabled={isSendingMessage}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+              setText(e.target.value);
+
+              // Handle typing indicator
+              if (e.target.value.trim()) {
+                startTyping();
+                // Clear existing timeout
+                if (typingTimeoutRef.current) {
+                  clearTimeout(typingTimeoutRef.current);
+                }
+                // Set new timeout to stop typing after 1 second of inactivity
+                typingTimeoutRef.current = setTimeout(() => {
+                  stopTyping();
+                }, 1000);
+              } else {
+                stopTyping();
+              }
+            }}
+            onBlur={() => {
+              // Stop typing when input loses focus
+              stopTyping();
+            }}
           />
           <input
             type="file"

@@ -65,6 +65,19 @@ const initSocket = (server) => {
 			});
 		});
 
+		const typingEventHandler = (event, { receiverId }) => {
+			const senderId = socket.user.userId;
+			logger.info(`User ${senderId} ${event} to ${receiverId}`);
+			const recipientSockets = getAllUserSockets(receiverId);
+			logger.info(`Recipient sockets: ${recipientSockets}`);
+			recipientSockets.forEach((socketId) => {
+				io.to(socketId).emit(event, { senderId });
+			});
+		};
+
+		socket.on("typing", (data) => typingEventHandler("typing", data));
+		socket.on("stopTyping", (data) => typingEventHandler("stopTyping", data));
+
 		socket.on("disconnect", () => {
 			logger.info(`User disconnected: ${socket.id}, userId: ${userId}`);
 			if (userId && userSocketMap[userId]) {
@@ -80,4 +93,4 @@ const initSocket = (server) => {
 	return io;
 };
 
-export { io };
+export { initSocket, io };

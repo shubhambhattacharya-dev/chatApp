@@ -8,6 +8,7 @@ export const useChatStore = create((set, get) => ({
   messages: [],
   users: [],
   onlineUsers: [],
+  typingUsers: [], // Track users who are typing
 
   setOnlineUsers: (onlineUsers) => set({ onlineUsers }),
   selectedUser: JSON.parse(localStorage.getItem("selectedUser")) || null,
@@ -123,12 +124,43 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
+  // ✅ Handle typing indicators
+  handleTyping: (senderId) => {
+    const { selectedUser, typingUsers } = get();
+    if (selectedUser && senderId === selectedUser._id && !typingUsers.includes(senderId)) {
+      set({ typingUsers: [...typingUsers, senderId] });
+    }
+  },
+
+  handleStopTyping: (senderId) => {
+    set((state) => ({
+      typingUsers: state.typingUsers.filter(id => id !== senderId),
+    }));
+  },
+
+  // ✅ Send typing events
+  startTyping: () => {
+    const { selectedUser } = get();
+    const socket = useAuthStore.getState().socket;
+    if (socket && selectedUser) {
+      socket.emit("typing", { receiverId: selectedUser._id });
+    }
+  },
+
+  stopTyping: () => {
+    const { selectedUser } = get();
+    const socket = useAuthStore.getState().socket;
+    if (socket && selectedUser) {
+      socket.emit("stopTyping", { receiverId: selectedUser._id });
+    }
+  },
+
   // ✅ Select a user & load their messages
   setSelectedUser: (selectedUser) => {
     const { selectedUser: currentUser } = get();
     if (currentUser?._id === selectedUser?._id) return; // Avoid re-fetching same user
 
-    set({ selectedUser, messages: [] });
+    set({ selectedUser, messages: [], typingUsers: [] });
     localStorage.setItem("selectedUser", JSON.stringify(selectedUser));
     get().getMessages(selectedUser._id);
   },

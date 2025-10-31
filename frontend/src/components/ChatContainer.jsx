@@ -15,6 +15,7 @@ const ChatContainer = () => {
     selectedUser,
     messages,
     deleteMessage,
+    typingUsers,
   } = useChatStore()
 
   const { authUser, socket } = useAuthStore()
@@ -36,10 +37,34 @@ const ChatContainer = () => {
 
   // 🟢 Load messages when selectedUser is set and messages is empty
   useEffect(() => {
-    if (selectedUser && messages.length === 0) {
+    if (selectedUser) {
       getMessages(selectedUser._id);
     }
-  }, [selectedUser, messages.length, getMessages]);
+  }, [selectedUser, getMessages]);
+
+  useEffect(() => {
+    if (socket) {
+      const handleTyping = ({ senderId }) => {
+        if (selectedUser && senderId === selectedUser._id) {
+          useChatStore.getState().handleTyping(senderId);
+        }
+      };
+
+      const handleStopTyping = ({ senderId }) => {
+        if (selectedUser && senderId === selectedUser._id) {
+          useChatStore.getState().handleStopTyping(senderId);
+        }
+      };
+
+      socket.on("typing", handleTyping);
+      socket.on("stopTyping", handleStopTyping);
+
+      return () => {
+        socket.off("typing", handleTyping);
+        socket.off("stopTyping", handleStopTyping);
+      };
+    }
+  }, [socket, selectedUser]);
 
 
 
@@ -56,10 +81,17 @@ const ChatContainer = () => {
       <div className='flex-1 flex flex-col overflow-auto'>
         <ChatHeader />
         <MessageSkeleton />
-        <MessageInput />
-      </div>
-    )
-  }
+      {/* Typing Indicator */}
+      {typingUsers.length > 0 && (
+        <div className="px-4 py-2 text-sm text-gray-500">
+          {selectedUser?.fullName} is typing...
+        </div>
+      )}
+
+      <MessageInput typingUsers={typingUsers} />
+    </div>
+  )
+}
 
   // 🟢 Main chat UI
   return (
@@ -144,7 +176,7 @@ const ChatContainer = () => {
         </div>
       )}
 
-      <MessageInput />
+      <MessageInput typingUsers={typingUsers} />
     </div>
   )
 }
