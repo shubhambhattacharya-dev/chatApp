@@ -114,6 +114,7 @@ const ChatContainer = () => {
                       : selectedUser.profilePic || '/avatar.png'
                   }
                   alt='profile'
+                  className='size-10 object-cover rounded-full'
                 />
               </div>
             </div>
