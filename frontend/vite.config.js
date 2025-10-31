@@ -7,5 +7,8 @@ export default defineConfig({
   server:{
     port:3000,
     hmr: true,
-  }
+  },
+  define: {
+    __APP_ENV__: process.env.VITE_VERCEL_ENV,
+  },
 })

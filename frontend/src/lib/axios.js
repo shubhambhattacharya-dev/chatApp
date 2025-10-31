@@ -6,7 +6,7 @@ const API_BASE_URL = (() => {
     return import.meta.env.VITE_API_BASE_URL;
   }
   if (import.meta.env.MODE === "production") {
-    throw new Error("VITE_API_BASE_URL is not defined in production environment.");
+    return "/api"; // Use relative URLs in production (same domain)
   }
   return import.meta.env.MODE === "development" ? "http://localhost:8000/api" : "/api";
 })();

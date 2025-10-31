@@ -9,7 +9,7 @@ const getBaseURL = () => {
     return import.meta.env.VITE_BACKEND_URL;
   }
   if (import.meta.env.MODE === "production") {
-    throw new Error("VITE_BACKEND_URL is not defined in production environment.");
+    return ""; // Use relative URLs in production (same domain)
   }
   return import.meta.env.MODE === "development" ? "http://localhost:8000" :"/";
 };
