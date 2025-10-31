@@ -70,7 +70,7 @@ app.use("/api/messages", messageRoutes);
 // Production static file serving - must be before error handlers
 if(process.env.NODE_ENV === 'production'){
   app.use(express.static(path.join(__dirname, '../frontend/dist')));
-  app.get('/*', (req, res) => {
+  app.get(/^\/(?!api).*/, (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
   });
 }
