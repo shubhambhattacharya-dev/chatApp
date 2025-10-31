@@ -37,6 +37,9 @@ const MessageInput = () => {
       let imageUrl = null;
 
       if (imagePreview) {
+        // Show loading state for image upload
+        toast.loading("Uploading image...", { id: "upload" });
+
         // Upload image to backend first
         const formData = new FormData();
         // Convert base64 to blob
@@ -48,6 +51,8 @@ const MessageInput = () => {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
         imageUrl = uploadRes.data.imageUrl;
+
+        toast.success("Image uploaded successfully!", { id: "upload" });
       }
 
       console.log('Sending message data:', { text: text.trim(), imageUrl });
@@ -63,6 +68,7 @@ const MessageInput = () => {
     } catch (error) {
       console.error("Failed to send message:", error);
       toast.error("Failed to send message. Please try again.");
+      toast.dismiss("upload");
     }
   };
 

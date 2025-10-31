@@ -1,10 +1,12 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useChatStore } from '../store/useChatStore'
 import { useAuthStore } from '../store/useAuthStore'
 import ChatHeader from './ChatHeader'
 import MessageInput from './MessageInput'
 import MessageSkeleton from './skeletons/MessageSkeleton'
 import { formatMessageTime } from '../lib/util'
+import { MdDelete } from "react-icons/md";
+import toast from "react-hot-toast";
 
 const ChatContainer = () => {
   const {
@@ -12,28 +14,34 @@ const ChatContainer = () => {
     isMessagesLoading,
     selectedUser,
     messages,
-    unsubscribeFromMessage,
-    subscribeToMessage,
+    deleteMessage,
   } = useChatStore()
 
-  const { authUser } = useAuthStore()
+  const { authUser, socket } = useAuthStore()
   const messageEndRef = useRef(null)
+  const [selectedImage, setSelectedImage] = useState(null)
 
-  // 🟢 Fetch and subscribe to messages
+  const handleDeleteMessage = async (messageId) => {
+    if (!window.confirm("Are you sure you want to delete this message?")) return;
+    await deleteMessage(messageId);
+  };
+
+  const handleImageClick = (imageUrl) => {
+    setSelectedImage(imageUrl);
+  };
+
+  const closeModal = () => {
+    setSelectedImage(null);
+  };
+
+  // 🟢 Load messages when selectedUser is set and messages is empty
   useEffect(() => {
-    if (!selectedUser?._id) return
-
-    const controller = new AbortController()
-    const signal = controller.signal
-
-    getMessages(selectedUser._id, { signal })
-    subscribeToMessage(selectedUser._id)
-
-    return () => {
-      unsubscribeFromMessage()
-      controller.abort()
+    if (selectedUser && messages.length === 0) {
+      getMessages(selectedUser._id);
     }
-  }, [selectedUser?._id, getMessages, subscribeToMessage, unsubscribeFromMessage])
+  }, [selectedUser, messages.length, getMessages]);
+
+
 
   // 🟢 Auto-scroll when new messages arrive
   useEffect(() => {
@@ -84,20 +92,58 @@ const ChatContainer = () => {
               </time>
             </div>
 
-            <div className='chat-bubble flex flex-col'>
+            <div className='chat-bubble flex flex-col relative'>
               {message.attachments?.length > 0 && (
                 <img
                   src={message.attachments[0].url}
                   alt='attachment'
-                  className='sm:max-w-[200px] rounded-md mb-2'
+                  className='sm:max-w-[200px] rounded-md mb-2 cursor-pointer hover:opacity-80 transition-opacity'
+                  onClick={() => handleImageClick(message.attachments[0].url)}
+                />
+              )}
+              {message.imageUrl && (
+                <img
+                  src={message.imageUrl}
+                  alt='image'
+                  className='sm:max-w-[200px] rounded-md mb-2 cursor-pointer hover:opacity-80 transition-opacity'
+                  onClick={() => handleImageClick(message.imageUrl)}
                 />
               )}
               {message.message && <p>{message.message}</p>}
+              {message.senderId?._id === authUser._id && (
+                <button
+                  className='absolute top-1 right-1 text-white text-xs opacity-50 hover:opacity-100'
+                  onClick={() => handleDeleteMessage(message._id)}
+                >
+                  <MdDelete size={16} />
+                </button>
+              )}
             </div>
           </div>
         ))}
         <div ref={messageEndRef} />
       </div>
+
+      {/* Image Modal */}
+      {selectedImage && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" onClick={closeModal}>
+          <div className="relative max-w-4xl max-h-full p-4">
+            <img
+              src={selectedImage}
+              alt="Full size"
+              className="max-w-full max-h-full object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <button
+              onClick={closeModal}
+              className="absolute top-2 right-2 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       <MessageInput />
     </div>
   )

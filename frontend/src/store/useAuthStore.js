@@ -4,8 +4,15 @@ import toast from "react-hot-toast";
 import { useChatStore } from "./useChatStore.js";
 import { io } from "socket.io-client";
 
-const BASE_URL =
-  import.meta.env.MODE === "development" ? "http://localhost:8000" : "/";
+const getBaseURL = () => {
+  if (import.meta.env.VITE_BACKEND_URL) {
+    return import.meta.env.VITE_BACKEND_URL;
+  }
+  if (import.meta.env.MODE === "production") {
+    throw new Error("VITE_BACKEND_URL is not defined in production environment.");
+  }
+  return "http://localhost:8000";
+};
 
 export const useAuthStore = create((set, get) => ({
   authUser: null,
@@ -13,7 +20,6 @@ export const useAuthStore = create((set, get) => ({
   isLoggingIn: false,
   isUpdatingProfile: false,
   isCheckingAuth: true,
-  onlineUsers: [],
   socket: null,
 
   // ✅ Check authentication
@@ -21,7 +27,7 @@ export const useAuthStore = create((set, get) => ({
     try {
       const res = await axiosInstance.get("/auth/check-auth");
       set({ authUser: res.data.user });
-      get().connectSocket?.();
+      get().connectSocket();
     } catch {
       set({ authUser: null });
     } finally {
@@ -36,7 +42,7 @@ export const useAuthStore = create((set, get) => ({
       const res = await axiosInstance.post("/auth/signup", data);
       set({ authUser: res.data.user });
       toast.success("Account created successfully");
-      get().connectSocket?.();
+      get().connectSocket();
     } catch (error) {
       toast.error(error.response?.data?.message || error.message);
     } finally {
@@ -51,7 +57,7 @@ export const useAuthStore = create((set, get) => ({
       const res = await axiosInstance.post("/auth/login", data);
       set({ authUser: res.data.user });
       toast.success("Logged in successfully");
-      get().connectSocket?.();
+      get().connectSocket();
     } catch (error) {
       toast.error(error.response?.data?.message || error.message);
     } finally {
@@ -65,9 +71,8 @@ export const useAuthStore = create((set, get) => ({
       await axiosInstance.post("/auth/logout");
     } catch (error) {
       // Don't show an error to the user, but log it for debugging
-      console.error("Error during server-side logout:", error.response?.data?.message || error.message);
     } finally {
-      get().disconnectSocket?.();
+      get().disconnectSocket();
       set({ authUser: null });
       toast.success("Logged out successfully");
     }
@@ -78,10 +83,12 @@ export const useAuthStore = create((set, get) => ({
     set({ isUpdatingProfile: true });
     try {
       const res = await axiosInstance.put("/auth/update-profile", data);
-      set((state) => ({ authUser: { ...state.authUser, ...res.data.user } }));
+      set({ authUser: res.data.user });
       toast.success("Profile updated successfully");
+      return res.data; // Return response for frontend to use
     } catch (error) {
       toast.error(error.response?.data?.message || error.message);
+      throw error; // Re-throw to allow frontend to handle
     } finally {
       set({ isUpdatingProfile: false });
     }
@@ -92,37 +99,55 @@ export const useAuthStore = create((set, get) => ({
     const { authUser, socket } = get();
     if (!authUser || socket?.connected) return;
 
-    const newSocket = io(BASE_URL, {
+    const newSocket = io(getBaseURL(), {
       withCredentials: true, // Send cookies with the connection request
+      query: {
+        userId: authUser._id,
+      },
     });
 
     newSocket.on("connect", () => {
-      // Now handled by the online users listener
+      console.log("Socket connected");
     });
 
     newSocket.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
       toast.error(`Connection failed: ${error.message}`);
     });
 
     newSocket.on("disconnect", (reason) => {
+      console.log("Socket disconnected, reason:", reason);
       if (reason !== "io client disconnect") {
         toast.error("Disconnected from the server");
       }
+      // Do not reset onlineUsers here, let the getOnlineUsers event handle updates
     });
 
     // ✅ Online users update
     newSocket.on("getOnlineUsers", (userIds) => {
-      set({ onlineUsers: userIds });
+      console.log("Online users updated:", userIds);
+      useChatStore.getState().setOnlineUsers(userIds);
     });
 
-    // ✅ New message listener
+    // ✅ New message listener (handle message updates and notifications)
     newSocket.on("newMessage", (newMessage) => {
-      const { selectedUser, messages } = useChatStore.getState();
-      // Only add the message if the chat is currently open
-      if (selectedUser?._id === newMessage.senderId._id) {
-        useChatStore.setState({ messages: [...messages, newMessage] });
+      console.log("New message received:", newMessage);
+
+      // Handle message updates in chat store
+      useChatStore.getState().handleNewMessage(newMessage);
+
+      // Show notification for new messages (only if not from current user)
+      if (newMessage.senderId._id !== get().authUser?._id) {
+        toast.success(`New message from ${newMessage.senderId.fullName}`, {
+          duration: 3000,
+          position: 'top-right',
+        });
       }
-      // Optionally, add a notification for messages received when the chat is not open
+    });
+
+    // ✅ Message deletion listener
+    newSocket.on("messageDeleted", (deletedMessageId) => {
+      useChatStore.getState().handleMessageDeleted(deletedMessageId);
     });
 
     set({ socket: newSocket });
@@ -132,15 +157,33 @@ export const useAuthStore = create((set, get) => ({
   disconnectSocket: () => {
     const socket = get().socket;
     if (socket) {
-	  socket.off("connect");
+      socket.off("connect");
       socket.off("connect_error");
       socket.off("disconnect");
       socket.off("getOnlineUsers");
       socket.off("newMessage");
+      socket.off("messageDeleted");
+
       if (socket.connected) {
         socket.disconnect();
       }
     }
-    set({ socket: null, onlineUsers: [] });
+    set({ socket: null });
+    // Do not reset onlineUsers here, let the getOnlineUsers event handle updates
+    // Note: We don't call setOnlineUsers([]) here to avoid overriding the real-time updates
+  },
+
+  // ✅ Delete User Account
+  deleteUser: async () => {
+    const { authUser, logout } = get();
+    if (!authUser?._id) return toast.error("No authenticated user found.");
+
+    try {
+      await axiosInstance.delete(`/auth/delete-account`);
+      toast.success("Account deleted successfully!");
+      logout(); // Log out the user after successful deletion
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to delete account");
+    }
   },
 }));

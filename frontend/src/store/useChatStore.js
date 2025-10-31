@@ -1,13 +1,16 @@
 import { create } from "zustand";
 import toast from "react-hot-toast";
-import axios from "axios";
 import { axiosInstance } from "../lib/axios";
+import axios from "axios";
 import { useAuthStore } from "./useAuthStore";
 
 export const useChatStore = create((set, get) => ({
   messages: [],
   users: [],
-  selectedUser: null,
+  onlineUsers: [],
+
+  setOnlineUsers: (onlineUsers) => set({ onlineUsers }),
+  selectedUser: JSON.parse(localStorage.getItem("selectedUser")) || null,
   isUsersLoading: false,
   isMessagesLoading: false,
   isSendingMessage: false,
@@ -32,7 +35,7 @@ export const useChatStore = create((set, get) => ({
       const res = await axiosInstance.get(`/messages/${userId}`, {
         signal: options.signal,
       });
-      set({ messages: res.data.messages || [] });
+      set({ messages: res.data || [] }); // Assuming res.data is the array of messages
     } catch (error) {
       if (axios.isCancel(error)) return; // Don't throw, just return silently
       toast.error(error.response?.data?.message || "Failed to fetch messages");
@@ -52,7 +55,17 @@ export const useChatStore = create((set, get) => ({
         `/messages/send/${selectedUser._id}`,
         messageData
       );
-      set({ messages: [...messages, res.data] });
+
+      // Optimistic update: Add message to local state immediately
+      const newMessage = res.data;
+      const exists = messages.some(msg => msg._id === newMessage._id);
+      if (!exists) {
+        set({ messages: [...messages, newMessage] });
+        console.log("Message added optimistically:", newMessage);
+      }
+
+      // Note: Backend already emits "newMessage" via Socket.IO, no need to emit again here
+      console.log("Message sent via HTTP:", res.data);
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to send message");
     } finally {
@@ -60,27 +73,54 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  // ✅ Subscribe to real-time incoming messages
-  subscribeToMessage: () => {
-    const { selectedUser } = get();
-    if (!selectedUser) return;
+  // ✅ Handle incoming new message
+  handleNewMessage: (newMessage) => {
+    const { selectedUser, messages } = get();
+    const authUser = useAuthStore.getState().authUser;
+    if (!selectedUser || !authUser) return;
 
-    const socket = useAuthStore.getState().socket;
-    if (!socket) return;
-
-    // Unsubscribe first to avoid duplicate listeners
-    socket.off("newMessage");
-
-    socket.on("newMessage", (newMessage) => {
-      const current = get().messages;
-      set({ messages: [...current, newMessage] });
-    });
+    if ((newMessage.senderId._id === selectedUser._id && newMessage.receiverId === authUser._id) ||
+        (newMessage.senderId._id === authUser._id && newMessage.receiverId === selectedUser._id)) {
+      // Avoid duplicates by checking if message already exists
+      const exists = messages.some(msg => msg._id === newMessage._id);
+      if (!exists) {
+        console.log("Adding new message to UI:", newMessage);
+        set({ messages: [...messages, newMessage] });
+      } else {
+        console.log("Message already exists, skipping:", newMessage._id);
+      }
+    } else {
+      console.log("Message not for this conversation:", {
+        senderId: newMessage.senderId?._id,
+        receiverId: newMessage.receiverId,
+        selectedUserId: selectedUser._id,
+        authUserId: authUser._id
+      });
+    }
   },
 
-  // ✅ Unsubscribe from messages
-  unsubscribeFromMessage: () => {
-    const socket = useAuthStore.getState().socket;
-    if (socket) socket.off("newMessage");
+  // ✅ Handle message deletion
+  handleMessageDeleted: (deletedMessageId) => {
+    console.log("Message deleted via socket:", deletedMessageId);
+    set((state) => ({
+      messages: state.messages.filter((msg) => msg._id !== deletedMessageId),
+    }));
+  },
+
+  // ✅ Delete a message
+  deleteMessage: async (messageId) => {
+    set({ isMessagesLoading: true }); // Use messages loading for now, could be a separate state
+    try {
+      await axiosInstance.delete(`/messages/${messageId}`);
+      set((state) => ({
+        messages: state.messages.filter((msg) => msg._id !== messageId),
+      }));
+      toast.success("Message deleted successfully!");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to delete message");
+    } finally {
+      set({ isMessagesLoading: false });
+    }
   },
 
   // ✅ Select a user & load their messages
@@ -89,6 +129,9 @@ export const useChatStore = create((set, get) => ({
     if (currentUser?._id === selectedUser?._id) return; // Avoid re-fetching same user
 
     set({ selectedUser, messages: [] });
+    localStorage.setItem("selectedUser", JSON.stringify(selectedUser));
     get().getMessages(selectedUser._id);
   },
 }));
+
+

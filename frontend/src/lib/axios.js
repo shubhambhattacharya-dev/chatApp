@@ -1,15 +1,24 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
  
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+const API_BASE_URL = (() => {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  if (import.meta.env.MODE === "production") {
+    throw new Error("VITE_API_BASE_URL is not defined in production environment.");
+  }
+  return "http://localhost:8000/api";
+})();
 
 export const axiosInstance = axios.create({
     baseURL: API_BASE_URL,
     withCredentials: true, // to include cookies in cross-origin requests
     timeout: 30000, // increased timeout to 30 seconds
-    headers: {
-        'Content-Type': 'application/json',
-    },
+    // Remove default Content-Type header to allow multipart/form-data for file uploads
+    // headers: {
+    //     'Content-Type': 'application/json',
+    // },
 });
 
 // Request interceptor

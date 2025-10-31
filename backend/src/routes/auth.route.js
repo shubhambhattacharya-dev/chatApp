@@ -1,8 +1,9 @@
 import express from 'express';
 import { rateLimit } from 'express-rate-limit';
-import { signup, login, logout, updateProfile, checkAuth } from '../controllers/auth.controller.js';
+import { signup, login, logout, updateProfile, checkAuth, deleteUser } from '../controllers/auth.controller.js';
 import { protectRoute } from '../middleware/auth.middleware.js';
 import { validateSignup, validateLogin, validateUpdateProfile } from '../middleware/validation.middleware.js';
+import { uploadSingleImage } from '../middleware/upload.middleware.js';
 import { AUTH_ROUTES_LIMIT, FIFTEEN_MINUTES_IN_MS } from '../constants.js';
 
 const router = express.Router();
@@ -21,6 +22,7 @@ router.post('/login', authLimiter, validateLogin, login);
 router.post('/logout', protectRoute, logout);
 
 
-router.put('/update-profile', protectRoute, validateUpdateProfile, updateProfile);
+router.put('/update-profile', authLimiter, protectRoute, uploadSingleImage('profilePic'), validateUpdateProfile, updateProfile);
 router.get('/check-auth', protectRoute, checkAuth);
+router.delete('/delete-account', authLimiter, protectRoute, deleteUser);
 export default router;

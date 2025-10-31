@@ -13,7 +13,7 @@ import { useThemeStore } from "./store/useThemeStore.js";
 
 const App = () => {
   // ✅ Zustand destructuring
-  const { authUser, checkAuth, isCheckingAuth, onlineUsers } = useAuthStore();
+  const { authUser, checkAuth, isCheckingAuth } = useAuthStore();
   const { theme } = useThemeStore();
   const location = useLocation();
 
@@ -22,11 +22,7 @@ const App = () => {
     checkAuth();
   }, []);
 
-  // ✅ Debug logs
-  console.log("Auth User:", authUser);
-  console.log("Online Users:", onlineUsers);
 
-  // ✅ Loader condition fixed
   if (isCheckingAuth && !authUser) {
     return (
       <div className="flex justify-center items-center h-screen">

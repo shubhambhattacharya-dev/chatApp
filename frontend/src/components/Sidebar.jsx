@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import SidebarSkeleton from "./skeletons/SidebarSkeleton";
 import { Users } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
@@ -6,7 +6,8 @@ import { useChatStore } from "../store/useChatStore"
 
 const Sidebar = () => {
   const { getUsers, selectedUser, setSelectedUser, isUsersLoading, users } = useChatStore();
-  const { onlineUsers } = useAuthStore();
+  const { onlineUsers } = useChatStore();
+  const [showOnlineOnly, setShowOnlineOnly] = useState(false);
 
   useEffect(() => {
     getUsers();
@@ -23,7 +24,20 @@ const Sidebar = () => {
         </div>
       </div>
 
-      {/* TODO: online filter toggle */}
+      {/* Online filter toggle */}
+      <div className="border-b border-base-300 w-full p-3">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            className="checkbox checkbox-sm"
+            checked={showOnlineOnly}
+            onChange={(e) => setShowOnlineOnly(e.target.checked)}
+          />
+          <span className="text-sm font-medium hidden lg:block">Show online only</span>
+          <span className="text-xs lg:hidden">Online</span>
+        </label>
+      </div>
+
       <div className="overflow-y-auto w-full py-3">
         {users.length === 0 ? (
           <div className='flex items-center justify-center h-full text-sm text-base-content/60 px-4 text-center'>
@@ -31,7 +45,16 @@ const Sidebar = () => {
             <p className='lg:hidden'>No users.</p>
           </div>
         ) : (
-          users.map((user) => (
+          users
+            .filter((user) => !showOnlineOnly || onlineUsers?.includes(user._id))
+            .sort((a, b) => {
+              const aOnline = onlineUsers?.includes(a._id);
+              const bOnline = onlineUsers?.includes(b._id);
+              if (aOnline && !bOnline) return -1;
+              if (!aOnline && bOnline) return 1;
+              return a.fullName.localeCompare(b.fullName);
+            })
+            .map((user) => (
             <button
               key={user._id}
               onClick={() => setSelectedUser(user)}

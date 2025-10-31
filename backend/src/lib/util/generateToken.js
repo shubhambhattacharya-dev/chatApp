@@ -1,5 +1,6 @@
 
 import jwt from 'jsonwebtoken';
+import logger from './logger.js';
 
 export const generateToken = (userId, res) => {
     try {
@@ -17,7 +18,7 @@ export const generateToken = (userId, res) => {
 
         return token;
     } catch (error) {
-        console.error('Token generation error:', error);
+        logger.error({ err: error }, 'Token generation error:');
         throw new Error('Failed to generate authentication token');
     }
 };

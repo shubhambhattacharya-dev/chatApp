@@ -39,14 +39,37 @@ export const validateLogin = [
 ];
 
 export const validateUpdateProfile = [
+  body('fullName')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ min: 3 }).withMessage('Full name must be at least 3 characters long.')
+    .escape(),
+
+  body('email')
+    .optional({ checkFalsy: true })
+    .isEmail().withMessage('Please provide a valid email address.')
+    .normalizeEmail(),
+
+  body('password')
+    .optional({ checkFalsy: true })
+    .isLength({ min: 8 }).withMessage('Password must be at least 8 characters long.')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/)
+    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.'),
+
   body('profilePic')
-    .notEmpty().withMessage('No profile picture provided.'),
+    .optional({ checkFalsy: true })
+    .custom((value, { req }) => {
+      if (req.file && !req.file.mimetype.startsWith('image/')) {
+        throw new Error('Uploaded file must be an image.');
+      }
+      return true;
+    }),
 
   handleValidationErrors,
 ];
 
 export const validateSendMessage = [
-  body('text')
+  body('message')
     .optional()
     .trim()
     .isLength({ max: 1000 }).withMessage('Message text cannot exceed 1000 characters.')
@@ -58,7 +81,7 @@ export const validateSendMessage = [
 
   // Custom validation to ensure at least one field is present
   body().custom((value, { req }) => {
-    if (!req.body.text && !req.body.imageUrl) {
+    if (!req.body.message && !req.body.imageUrl) {
       throw new Error('Message content cannot be empty');
     }
     return true;

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import bcryptjs from 'bcryptjs';
 
 const userSchema = new mongoose.Schema({
     username: {
@@ -29,7 +30,7 @@ const userSchema = new mongoose.Schema({
     password: {
         type: String,
         required: true,
-        minlength: 6
+        minlength: 8
     },
     profilePic: {
         type: String,
@@ -49,14 +50,10 @@ const userSchema = new mongoose.Schema({
 
 // Indexes are now defined inline with schema fields above
 
-// Pre-save middleware for additional validation
-userSchema.pre('save', function(next) {
-    try {
-        // Additional validation logic can be added here
-        next();
-    } catch (error) {
-        next(error);
-    }
+// Pre-save middleware for additional validation (password hashing handled in controller)
+userSchema.pre('save', async function(next) {
+    // Additional validations can be added here if needed
+    next();
 });
 
 // Static method to find user by email or username

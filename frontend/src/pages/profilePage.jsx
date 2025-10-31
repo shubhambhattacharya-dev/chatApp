@@ -1,23 +1,97 @@
-import { useState } from "react";
-import { useAuthStore } from "../store/useAuthStore";
-import { Camera, Mail, User } from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { useAuthStore } from '../store/useAuthStore';
+import { Camera, User, Mail } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 const ProfilePage = () => {
   const { authUser, isUpdatingProfile, updateProfile, isCheckingAuth } = useAuthStore();
   const [selectedImg, setSelectedImg] = useState(null);
+  const [formData, setFormData] = useState({
+    fullName: authUser?.fullName || "",
+    email: authUser?.email || "",
+  });
+
+  // Update form data when authUser changes (e.g., after initial fetch or successful update)
+  useEffect(() => {
+    if (authUser) {
+      setFormData({
+        fullName: authUser.fullName || "",
+        email: authUser.email || "",
+      });
+    }
+  }, [authUser]);
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    // Only send fields that have changed or are explicitly being updated
+    const dataToUpdate = {};
+    if (formData.fullName !== authUser.fullName) {
+      dataToUpdate.fullName = formData.fullName;
+    }
+    if (formData.email !== authUser.email) {
+      dataToUpdate.email = formData.email;
+    }
+
+    if (Object.keys(dataToUpdate).length === 0) {
+      toast("No changes to save.", { type: "info" });
+      return;
+    }
+
+    try {
+      await updateProfile(dataToUpdate);
+      toast("Profile updated successfully!", { type: "success" }); // Add success toast here
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast(error.message || "Failed to update profile.", { type: "error" }); // Explicitly show error toast
+    }
+  };
 
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast('Please select a valid image file', { type: 'error' });
+      return;
+    }
+
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      toast('Image size must be less than 5MB', { type: 'error' });
+      return;
+    }
 
     const reader = new FileReader();
     reader.readAsDataURL(file);
 
     reader.onload = async () => {
       const base64Image = reader.result;
-      setSelectedImg(base64Image);
-      console.log('Uploading profile image:', base64Image.substring(0, 50) + '...');
-      await updateProfile({ profilePic: base64Image });
+      setSelectedImg(base64Image); // Show preview immediately
+
+      // Create FormData to send the file
+      const formData = new FormData();
+      formData.append('profilePic', file);
+
+      try {
+        const res = await updateProfile(formData);
+        // Update preview with the actual uploaded image URL from response
+        if (res?.user?.profilePic) {
+          setSelectedImg(res.user.profilePic);
+        }
+      } catch (error) {
+        console.error('Profile update failed:', error);
+        // Reset to original image on error
+        setSelectedImg(authUser?.profilePic || "/avatar.png");
+      }
+    };
+
+    reader.onerror = () => {
+      toast('Failed to read the selected file', { type: 'error' });
     };
   };
 
@@ -81,23 +155,47 @@ const ProfilePage = () => {
           </div>
 
           {/* User info */}
-          <div className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-1.5">
-              <div className="text-sm text-zinc-400 flex items-center gap-2">
+              <label htmlFor="fullName" className="text-sm text-zinc-400 flex items-center gap-2">
                 <User className="w-4 h-4" />
                 Full Name
-              </div>
-              <p className="px-4 py-2.5 bg-base-200 rounded-lg border">{authUser?.fullName || "N/A"}</p>
+              </label>
+              <input
+                type="text"
+                id="fullName"
+                name="fullName"
+                className="input input-bordered w-full bg-base-200"
+                value={formData.fullName}
+                onChange={handleChange}
+                disabled={isUpdatingProfile}
+              />
             </div>
 
             <div className="space-y-1.5">
-              <div className="text-sm text-zinc-400 flex items-center gap-2">
+              <label htmlFor="email" className="text-sm text-zinc-400 flex items-center gap-2">
                 <Mail className="w-4 h-4" />
                 Email Address
-              </div>
-              <p className="px-4 py-2.5 bg-base-200 rounded-lg border">{authUser?.email || "N/A"}</p>
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                className="input input-bordered w-full bg-base-200"
+                value={formData.email}
+                onChange={handleChange}
+                disabled={isUpdatingProfile}
+              />
             </div>
-          </div>
+
+            <button
+              type="submit"
+              className="btn btn-primary w-full"
+              disabled={isUpdatingProfile}
+            >
+              {isUpdatingProfile ? "Saving..." : "Save Changes"}
+            </button>
+          </form>
 
           {/* Account info */}
           <div className="mt-6 bg-base-300 rounded-xl p-6 border border-zinc-700">

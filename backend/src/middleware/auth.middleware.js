@@ -4,6 +4,15 @@ import logger from '../lib/util/logger.js';
 
 export const protectRoute = async (req, res, next) => {
     try {
+        // Ensure JWT_SECRET is available
+        if (!process.env.JWT_SECRET) {
+            logger.fatal('JWT_SECRET is not defined in protectRoute middleware.');
+            return res.status(500).json({
+                success: false,
+                message: "Internal Server Error: JWT secret not configured."
+            });
+        }
+
         const token = req.cookies.jwt;
 
         if (!token) {
@@ -13,14 +22,9 @@ export const protectRoute = async (req, res, next) => {
             });
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
 
-        if (!decoded) {
-            return res.status(401).json({
-                success: false,
-                message: "Unauthorized: Invalid token"
-            });
-        }
+
 
         const user = await User.findById(decoded.userId).select('-password');
 
@@ -35,26 +39,27 @@ export const protectRoute = async (req, res, next) => {
         next();
 
     } catch (error) {
-        logger.error({ err: error }, 'Authentication error');
+        logger.error({ message: error.message, stack: error.stack }, 'Authentication error in protectRoute'); // Add stack trace for better debugging
 
         // Handle specific JWT errors
         if (error.name === 'TokenExpiredError') {
-            return res.status(401).json({
+            res.status(401).json({
                 success: false,
                 message: "Unauthorized: Token expired"
             });
         }
 
         if (error.name === 'JsonWebTokenError') {
-            return res.status(401).json({
+            res.status(401).json({
                 success: false,
                 message: "Unauthorized: Invalid token"
             });
         }
 
-        return res.status(401).json({
+        // For any other unexpected errors, return a 500 Internal Server Error
+        res.status(500).json({ // Changed to 500 for unhandled errors
             success: false,
-            message: "Unauthorized: Authentication failed"
+            message: "Internal Server Error: Authentication failed unexpectedly"
         });
     }
 };

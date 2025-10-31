@@ -5,14 +5,17 @@ import cookieParser from "cookie-parser";
 
 let io;
 
-const userSocketMap = {}; // { userId: socketId }
+const userSocketMap = {}; // { userId: [socketId1, socketId2, ...] }
 
-export const getReceiverSocketId = (userId) => userSocketMap[userId];
 
-export const initSocket = (server) => {
+export const getAllUserSockets = (userId) => userSocketMap[userId] || [];
+
+const initSocket = (server) => {
 	io = new Server(server, {
 		cors: {
-			origin: ["http://localhost:3000", "http://localhost:3001"],
+			origin: process.env.SOCKET_CORS_ORIGIN
+				? process.env.SOCKET_CORS_ORIGIN.split(',')
+				: ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"],
 			credentials: true,
 		},
 	});
@@ -28,7 +31,7 @@ export const initSocket = (server) => {
 			return next(new Error("Authentication error: No token provided."));
 		}
 
-		jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+		jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] }, (err, decoded) => {
 			if (err) {
 				logger.error("Socket Authentication error: Invalid token.");
 				return next(new Error("Authentication error: Invalid token."));
@@ -43,15 +46,32 @@ export const initSocket = (server) => {
 		logger.info(`User connected: ${socket.id}, userId: ${userId}`);
 
 		if (userId) {
-			userSocketMap[userId] = socket.id;
+			if (!userSocketMap[userId]) {
+				userSocketMap[userId] = [];
+			}
+			userSocketMap[userId].push(socket.id);
 		}
 
 		io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
+		// Note: "sendMessage" event is handled in message.controller.js after saving to DB
+		// This socket listener is redundant and can be removed if not used elsewhere
+
+		socket.on("messageDeleted", ({ messageId, receiverId }) => {
+			logger.info(`Message deleted event: ${messageId}, receiverId: ${receiverId}`);
+			const recipientSockets = getAllUserSockets(receiverId);
+			recipientSockets.forEach((socketId) => {
+				io.to(socketId).emit("messageDeleted", messageId);
+			});
+		});
+
 		socket.on("disconnect", () => {
 			logger.info(`User disconnected: ${socket.id}, userId: ${userId}`);
-			if (userId) {
-				delete userSocketMap[userId];
+			if (userId && userSocketMap[userId]) {
+				userSocketMap[userId] = userSocketMap[userId].filter(id => id !== socket.id);
+				if (userSocketMap[userId].length === 0) {
+					delete userSocketMap[userId];
+				}
 				io.emit("getOnlineUsers", Object.keys(userSocketMap));
 			}
 		});

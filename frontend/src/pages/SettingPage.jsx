@@ -1,5 +1,6 @@
 import { THEMES } from "../constants";
 import { useThemeStore } from "../store/useThemeStore";
+import { useAuthStore } from "../store/useAuthStore";
 import { Send } from "lucide-react";
 
 const PREVIEW_MESSAGES = [
@@ -9,6 +10,12 @@ const PREVIEW_MESSAGES = [
 
 const SettingsPage = () => {
   const { theme, setTheme } = useThemeStore();
+  const { deleteUser } = useAuthStore();
+
+  const handleDeleteAccount = async () => {
+    if (!window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) return;
+    await deleteUser();
+  };
 
   return (
     <div className="h-screen container mx-auto px-4 pt-20 max-w-5xl">
@@ -109,6 +116,18 @@ const SettingsPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Account Management Section */}
+        <div className="flex flex-col gap-1 pt-6">
+          <h2 className="text-lg font-semibold">Account Management</h2>
+          <p className="text-sm text-base-content/70">Manage your account settings</p>
+        </div>
+        <button
+          className="btn btn-error w-fit"
+          onClick={handleDeleteAccount}
+        >
+          Delete Account
+        </button>
       </div>
     </div>
   );
