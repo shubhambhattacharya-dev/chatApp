@@ -4,7 +4,7 @@ import Homepage from "./pages/HomePage.jsx";
 import SignUpPage from "./pages/SignUpPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import SettingPage from "./pages/SettingPage.jsx";
-import ProfilePage from "./pages/ProfilePage.jsx"; // ✅ fixed filename casing (capital “P” is standard)
+import ProfilePage from "./pages/profilePage.jsx"; // ✅ fixed filename casing (capital "P" is standard)
 import Navbar from "./components/Navbar.jsx";
 import { useAuthStore } from "./store/useAuthStore.js";
 import { Loader } from "lucide-react";
