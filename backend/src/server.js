@@ -47,10 +47,6 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // Middleware
-app.use(cors({
-  origin: "http://localhost:3000",
-  credentials: true,
-}));
 app.use(express.json({ limit: "5mb" })); // To parse JSON payloads
 app.use(cookieParser());
 
@@ -59,10 +55,20 @@ app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 
 if(process.env.NODE_ENV === 'production'){
+  app.use(cors({
+    origin: process.env.CORS_ORIGIN || "https://your-render-app-url.onrender.com",
+    credentials: true,
+  }));
   app.use(express.static(path.join(__dirname, '../frontend/dist')));
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
   });
+} else {
+  // Development CORS
+  app.use(cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+  }));
 }
 
 // Error Handling Middleware
