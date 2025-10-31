@@ -134,14 +134,6 @@ const ChatContainer = () => {
                   onClick={() => handleImageClick(message.attachments[0].url)}
                 />
               )}
-              {message.imageUrl && (
-                <img
-                  src={message.imageUrl}
-                  alt='image'
-                  className='sm:max-w-[200px] rounded-md mb-2 cursor-pointer hover:opacity-80 transition-opacity'
-                  onClick={() => handleImageClick(message.imageUrl)}
-                />
-              )}
               {message.message && <p>{message.message}</p>}
               {message.senderId?._id === authUser._id && (
                 <button

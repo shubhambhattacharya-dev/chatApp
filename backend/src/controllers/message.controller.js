@@ -113,13 +113,7 @@ export const sendMessage = async (req, res) => {
     // Populate sender details for the real-time event
     await newMessage.populate('senderId', 'fullName profilePic');
 
-    // Add imageUrl to the response for frontend compatibility
-    const messageWithImageUrl = {
-      ...newMessage.toObject(),
-      imageUrl: imageUrl || null
-    };
-
-    logger.info(`Message saved and populated: ${newMessage._id}, sender: ${senderId}, receiver: ${receiverId}, imageUrl: ${imageUrl}`);
+    logger.info(`Message saved and populated: ${newMessage._id}, sender: ${senderId}, receiver: ${receiverId}`);
 
     const receiverSockets = getAllUserSockets(receiverId);
     const senderSockets = getAllUserSockets(senderId);
@@ -127,18 +121,18 @@ export const sendMessage = async (req, res) => {
     // Emit to all receiver's sockets
     receiverSockets.forEach(socketId => {
       logger.info(`Emitting newMessage to receiver socket: ${socketId}`);
-      io.to(socketId).emit("newMessage", messageWithImageUrl);
+      io.to(socketId).emit("newMessage", newMessage);
     });
 
     // Emit to all sender's sockets (excluding receiver sockets if sender is also receiver)
     senderSockets.forEach(socketId => {
       if (!receiverSockets.includes(socketId)) {
         logger.info(`Emitting newMessage to sender socket: ${socketId}`);
-        io.to(socketId).emit("newMessage", messageWithImageUrl);
+        io.to(socketId).emit("newMessage", newMessage);
       }
     });
 
-    res.status(201).json(messageWithImageUrl);
+    res.status(201).json(newMessage);
   } catch (error) {
     logger.error("Error in sendMessage controller: ", error.message);
     res.status(500).json({ error: "Internal server error" });
