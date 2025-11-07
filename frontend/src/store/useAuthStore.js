@@ -3,15 +3,16 @@ import { axiosInstance } from "../lib/axios.js";
 import toast from "react-hot-toast";
 import { useChatStore } from "./useChatStore.js";
 import { io } from "socket.io-client";
+import DOMPurify from "dompurify";
 
 const getBaseURL = () => {
   if (import.meta.env.VITE_BACKEND_URL) {
     return import.meta.env.VITE_BACKEND_URL;
   }
-  if (import.meta.env.MODE === "production") {
-    return ""; // Use relative URLs in production (same domain)
+  if (import.meta.env.PROD) {
+    return window.location.origin;
   }
-  return import.meta.env.MODE === "development" ? "http://localhost:8000" :"/";
+  return import.meta.env.DEV ? "http://localhost:8000" : "/";
 };
 
 export const useAuthStore = create((set, get) => ({
@@ -28,8 +29,9 @@ export const useAuthStore = create((set, get) => ({
       const res = await axiosInstance.get("/auth/check-auth");
       set({ authUser: res.data.user });
       get().connectSocket();
-    } catch {
+    } catch (error) {
       set({ authUser: null });
+      toast.error(error.response?.data?.message || "Session expired. Please log in again.");
     } finally {
       set({ isCheckingAuth: false });
     }
@@ -39,7 +41,12 @@ export const useAuthStore = create((set, get) => ({
   signup: async (data) => {
     set({ isSigningUp: true });
     try {
-      const res = await axiosInstance.post("/auth/signup", data);
+      const sanitizedData = {
+        fullName: DOMPurify.sanitize(data.fullName),
+        email: DOMPurify.sanitize(data.email),
+        password: data.password,
+      };
+      const res = await axiosInstance.post("/auth/signup", sanitizedData);
       set({ authUser: res.data.user });
       toast.success("Account created successfully");
       get().connectSocket();
@@ -82,7 +89,21 @@ export const useAuthStore = create((set, get) => ({
   updateProfile: async (data) => {
     set({ isUpdatingProfile: true });
     try {
-      const res = await axiosInstance.put("/auth/update-profile", data);
+      const sanitizedData = {};
+      if (data.fullName) {
+        sanitizedData.fullName = DOMPurify.sanitize(data.fullName);
+      }
+      if (data.email) {
+        sanitizedData.email = DOMPurify.sanitize(data.email);
+      }
+      if (data.password) {
+        sanitizedData.password = data.password;
+      }
+      if (data.profilePic) {
+        sanitizedData.profilePic = data.profilePic;
+      }
+
+      const res = await axiosInstance.put("/auth/update-profile", sanitizedData);
       const updatedUser = res.data.user;
       set({ authUser: updatedUser });
 
@@ -109,6 +130,8 @@ export const useAuthStore = create((set, get) => ({
     if (!authUser || socket?.connected) return;
 
     const newSocket = io(getBaseURL(), {
+      transports: ["websocket"],
+      secure: import.meta.env.PROD,
       withCredentials: true, // Send cookies with the connection request
       query: {
         userId: authUser._id,
@@ -129,23 +152,18 @@ export const useAuthStore = create((set, get) => ({
       if (reason !== "io client disconnect") {
         toast.error("Disconnected from the server");
       }
-      // Do not reset onlineUsers here, let the getOnlineUsers event handle updates
     });
 
-    // ✅ Online users update
     newSocket.on("getOnlineUsers", (userIds) => {
       console.log("Online users updated:", userIds);
       useChatStore.getState().setOnlineUsers(userIds);
     });
 
-    // ✅ New message listener (handle message updates and notifications)
     newSocket.on("newMessage", (newMessage) => {
       console.log("New message received:", newMessage);
 
-      // Handle message updates in chat store
       useChatStore.getState().handleNewMessage(newMessage);
 
-      // Show notification for new messages (only if not from current user)
       if (newMessage.senderId._id !== get().authUser?._id) {
         toast.success(`New message from ${newMessage.senderId.fullName}`, {
           duration: 3000,
@@ -154,7 +172,6 @@ export const useAuthStore = create((set, get) => ({
       }
     });
 
-    // ✅ Message deletion listener
     newSocket.on("messageDeleted", (deletedMessageId) => {
       useChatStore.getState().handleMessageDeleted(deletedMessageId);
     });
@@ -178,8 +195,6 @@ export const useAuthStore = create((set, get) => ({
       }
     }
     set({ socket: null });
-    // Do not reset onlineUsers here, let the getOnlineUsers event handle updates
-    // Note: We don't call setOnlineUsers([]) here to avoid overriding the real-time updates
   },
 
   // ✅ Delete User Account

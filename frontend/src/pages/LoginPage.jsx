@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import AuthImagePattern from "../components/AuthImagePattern";
@@ -10,10 +11,29 @@ const LoginPage = () => {
     email: "",
     password: "",
   });
+  const [errors, setErrors] = useState({});
   const { login, isLoggingIn } = useAuthStore();
+
+  const validate = () => {
+    const newErrors = {};
+    if (!formData.email) {
+      newErrors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = "Email is invalid";
+    }
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+    }
+    return newErrors;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const newErrors = validate();
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
     login(formData);
   };
 
@@ -48,12 +68,14 @@ const LoginPage = () => {
                 </div>
                 <input
                   type="email"
-                  className={`input input-bordered w-full pl-10`}
+                  autoComplete="email"
+                  className={`input input-bordered w-full pl-10 ${errors.email ? "input-error" : ""}`}
                   placeholder="you@example.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 />
               </div>
+              {errors.email && <span className="text-error text-sm mt-1">{errors.email}</span>}
             </div>
 
             <div className="form-control">
@@ -66,7 +88,8 @@ const LoginPage = () => {
                 </div>
                 <input
                   type={showPassword ? "text" : "password"}
-                  className={`input input-bordered w-full pl-10`}
+                  autoComplete="current-password"
+                  className={`input input-bordered w-full pl-10 ${errors.password ? "input-error" : ""}`}
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
@@ -83,6 +106,7 @@ const LoginPage = () => {
                   )}
                 </button>
               </div>
+              {errors.password && <span className="text-error text-sm mt-1">{errors.password}</span>}
             </div>
 
             <button type="submit" className="btn btn-primary w-full" disabled={isLoggingIn}>
@@ -100,7 +124,7 @@ const LoginPage = () => {
           <div className="text-center">
             <p className="text-base-content/60">
               Don&apos;t have an account?{" "}
-              <Link to="/signup" className="link link-primary">
+              <Link to="/signup" className="link link-primary" rel="noopener noreferrer">
                 Create account
               </Link>
             </p>

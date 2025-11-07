@@ -1,6 +1,8 @@
+
 import express from "express";
 import http from "http";
-
+import https from "https";
+import fs from "fs";
 
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -16,18 +18,25 @@ import { initSocket } from "./lib/util/socket.js";
 import dotenv from "dotenv";
 dotenv.config();
 
-
 const app = express();
-const server = http.createServer(app);
-server.setMaxListeners(50); // Increase max listeners to prevent memory leak warnings
+let server;
+
+if (process.env.NODE_ENV === 'production' && process.env.HTTPS_KEY && process.env.HTTPS_CERT) {
+  const options = {
+    key: fs.readFileSync(process.env.HTTPS_KEY),
+    cert: fs.readFileSync(process.env.HTTPS_CERT),
+  };
+  server = https.createServer(options, app);
+} else {
+  server = http.createServer(app);
+}
+
+server.setMaxListeners(50);
 initSocket(server);
 
 const PORT = process.env.PORT || 8000;
 const __dirname = path.resolve();
 
-
-
-// Validate essential environment variables on startup
 const requiredEnv = ['MONGO_DB', 'JWT_SECRET', 'CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET', 'NODE_ENV'];
 for (const envVar of requiredEnv) {
   if (!process.env[envVar]) {
@@ -36,8 +45,8 @@ for (const envVar of requiredEnv) {
   }
 }
 
+app.set('trust proxy', 1);
 
-// Apply security middleware
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -47,8 +56,19 @@ app.use(
         "connect-src": ["'self'", "*.cloudinary.com", "data:"],
       },
     },
+    strictTransportSecurity: {
+      maxAge: 31536000, // 1 year
+      includeSubDomains: true,
+      preload: true,
+    },
+    frameguard: {
+      action: "deny",
+    },
+    xssFilter: true,
+    noSniff: true,
   })
 );
+
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
@@ -56,42 +76,37 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
-// Middleware
-app.use(express.json({ limit: "5mb" })); // To parse JSON payloads
+app.use(express.json({ limit: "5mb" }));
 app.use(cookieParser());
 
-// CORS configuration
-if(process.env.NODE_ENV === 'production'){
-  app.use(cors({
-    origin: process.env.CORS_ORIGIN || "https://justchat-bkal.onrender.com",
-    credentials: true,
-  }));
-} else {
-  app.use(cors({
-    origin: "http://localhost:3000",
-    credentials: true,
-  }));
-}
+const whitelist = ['https://justchat-bkal.onrender.com', 'http://localhost:3000'];
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (whitelist.indexOf(origin) !== -1 || !origin) {
+      callback(null, true)
+    } else {
+      callback(new Error('Not allowed by CORS'))
+    }
+  },
+  credentials: true,
+};
 
-// Routes
+app.use(cors(corsOptions));
+
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 
-// Production static file serving - must be before error handlers
-if(process.env.NODE_ENV === 'production'){
+if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../frontend/dist')));
   app.get(/^\/(?!api).*/, (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
   });
 }
 
-// Error Handling Middleware
-// 1. 404 Not Found Handler
 app.use((req, res, next) => {
   res.status(404).json({ success: false, message: "API endpoint not found" });
 });
 
-// 2. Global Error Handler
 app.use((err, req, res, next) => {
   logger.error({ err, req }, "🔥 An unexpected error occurred");
   const statusCode = err.statusCode || 500;
@@ -111,7 +126,6 @@ const startServer = async () => {
       logger.info(`🚀 Server is running on port ${PORT}`);
     });
 
-    // Handle port conflicts gracefully
     server.on('error', (err) => {
       if (err.code === 'EADDRINUSE') {
         if (process.env.NODE_ENV === 'development') {

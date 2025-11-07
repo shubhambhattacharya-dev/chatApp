@@ -1,4 +1,4 @@
-import { body, validationResult } from 'express-validator';
+import { body, param, validationResult } from 'express-validator';
 
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
@@ -68,7 +68,13 @@ export const validateUpdateProfile = [
   handleValidationErrors,
 ];
 
+export const validateGetMessagesBetweenUsers = [
+    param('id').isMongoId().withMessage('Invalid user ID'),
+    handleValidationErrors,
+];
+
 export const validateSendMessage = [
+  param('id').isMongoId().withMessage('Invalid user ID'),
   body('message')
     .optional()
     .trim()
@@ -88,4 +94,9 @@ export const validateSendMessage = [
   }),
 
   handleValidationErrors,
+];
+
+export const validateDeleteMessage = [
+    param('id').isMongoId().withMessage('Invalid message ID'),
+    handleValidationErrors,
 ];
