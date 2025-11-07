@@ -3,6 +3,8 @@ import express from "express";
 import http from "http";
 import https from "https";
 import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -100,7 +102,14 @@ app.use(cors(corsOptions));
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 
-
+if (process.env.NODE_ENV === "production") {
+	const __filename = fileURLToPath(import.meta.url);
+	const __dirname = path.dirname(__filename);
+	app.use(express.static(path.resolve(__dirname, "../../frontend/dist")));
+	app.get("*", (req, res) => {
+		res.sendFile(path.resolve(__dirname, "../../frontend/dist", "index.html"));
+	});
+}
 
 app.use((req, res, next) => {
   res.status(404).json({ success: false, message: "API endpoint not found" });
