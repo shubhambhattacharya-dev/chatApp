@@ -2,7 +2,7 @@
 import User from "../models/user.model.js";
 import Message from "../models/message.model.js";
 import multer from "multer";
-import fileType from "file-type";
+import { fileTypeFromBuffer } from "file-type";
 
 import cloudinary from "../lib/util/cloudinary.js";
 import { CLOUDINARY_IMAGE_FOLDER, RESOURCE_TYPE_IMAGE, IMAGE_UPLOAD_LIMIT_BYTES, MESSAGES_LIMIT } from "../constants.js";
@@ -32,7 +32,7 @@ const upload = multer({
   limits: { fileSize: IMAGE_UPLOAD_LIMIT_BYTES },
   fileFilter: async (req, file, cb) => {
     const buffer = file.buffer;
-    const type = await fileType.fromBuffer(buffer);
+    const type = await fileTypeFromBuffer(buffer);
     if (!type || !type.mime.startsWith('image/')) {
       return cb(new Error('Only image files are allowed!'), false);
     }
