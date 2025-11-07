@@ -8,7 +8,7 @@ const API_BASE_URL = (() => {
   if (import.meta.env.PROD) {
     return "/api"; // Use relative URLs in production (same domain)
   }
-  return "http://localhost:5000/api";
+  return "http://localhost:8000/api";
 })();
 
 export const axiosInstance = axios.create({

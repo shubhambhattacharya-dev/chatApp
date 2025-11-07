@@ -6,9 +6,15 @@ services:
     staticPublishPath: ./dist
     envVars:
       - key: VITE_API_BASE_URL
-        value: https://your-backend-service.onrender.com/api
+        fromService:
+          type: web
+          name: chatapp-backend
+          property: url
       - key: VITE_BACKEND_URL
-        value: https://your-backend-service.onrender.com
+        fromService:
+          type: web
+          name: chatapp-backend
+          property: url
   - type: web
     name: chatapp-backend
     runtime: node
@@ -18,16 +24,19 @@ services:
       - key: PORT
         value: 10000
       - key: MONGO_DB
-        value: mongodb+srv://shubhambhattacharya107_db_user:vQhkTiwsPgCKwmS2@cluster0.gp9ocar.mongodb.net/RealChat?appName=Cluster0
+        fromSecret: MONGO_DB_URL
       - key: JWT_SECRET
-        value: Zl7ZQZL+CEQicK57F8VCv3Hbalso+3UgfX6WRsuEYRTWWmcYxOyVcz9DVNyJVh7m cYnpEtGEpis0rR7vp5WyHw==
+        fromSecret: JWT_SECRET
       - key: CLOUDINARY_CLOUD_NAME
-        value: dpzxpci3a
+        fromSecret: CLOUDINARY_CLOUD_NAME
       - key: CLOUDINARY_API_KEY
-        value: 294394687278367
+        fromSecret: CLOUDINARY_API_KEY
       - key: CLOUDINARY_API_SECRET
-        value: E3aQv9CT461WgszLBcb1Zl50raY
+        fromSecret: CLOUDINARY_API_SECRET
       - key: CORS_ORIGINS
-        value: https://your-frontend-service.onrender.com
+        fromService:
+          type: web
+          name: chatapp-frontend
+          property: url
       - key: NODE_ENV
         value: production
