@@ -185,7 +185,7 @@ export const logout = async (req, res) => {
     res.cookie('jwt', '', {
       maxAge: 0,
       httpOnly: true,
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'strict',
       secure: process.env.NODE_ENV === 'production',
     });
 
@@ -356,7 +356,7 @@ export const deleteUser = async (req, res) => {
     res.cookie('jwt', '', {
       maxAge: 0,
       httpOnly: true,
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'strict',
       secure: process.env.NODE_ENV === 'production',
     });
 

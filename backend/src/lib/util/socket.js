@@ -13,11 +13,17 @@ export const getAllUserSockets = (userId) => userSocketMap[userId] || [];
 const initSocket = (server) => {
 	io = new Server(server, {
 		cors: {
-			origin: process.env.SOCKET_CORS_ORIGIN
-				? process.env.SOCKET_CORS_ORIGIN.split(',')
+			origin: process.env.CORS_ORIGINS
+				? process.env.CORS_ORIGINS.split(',')
 				: ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"],
 			credentials: true,
 		},
+		pingTimeout: 20000, // 20 seconds
+		pingInterval: 25000, // 25 seconds
+		transports: ['websocket', 'polling'],
+		allowEIO3: true,
+		maxHttpBufferSize: 1e8, // 100MB for file uploads
+		connectTimeout: 20000, // 20 seconds
 	});
 
 	// Use cookie-parser middleware for socket.io

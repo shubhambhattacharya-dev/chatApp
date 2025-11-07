@@ -12,7 +12,7 @@ const getBaseURL = () => {
   if (import.meta.env.PROD) {
     return window.location.origin;
   }
-  return import.meta.env.DEV ? "http://localhost:8000" : "/";
+  return "http://localhost:5000";
 };
 
 export const useAuthStore = create((set, get) => ({
@@ -136,6 +136,10 @@ export const useAuthStore = create((set, get) => ({
       query: {
         userId: authUser._id,
       },
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 2000,
+      timeout: 20000,
     });
 
     newSocket.on("connect", () => {

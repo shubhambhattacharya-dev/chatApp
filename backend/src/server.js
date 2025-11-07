@@ -79,16 +79,20 @@ app.use('/api', limiter);
 app.use(express.json({ limit: "5mb" }));
 app.use(cookieParser());
 
-const whitelist = ['https://justchat-bkal.onrender.com', 'http://localhost:3000'];
+const whitelist = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',')
+  : ['http://localhost:3000'];
+
 const corsOptions = {
   origin: function (origin, callback) {
     if (whitelist.indexOf(origin) !== -1 || !origin) {
-      callback(null, true)
+      callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'))
+      callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
+  optionsSuccessStatus: 200,
 };
 
 app.use(cors(corsOptions));

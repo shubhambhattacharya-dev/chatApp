@@ -3,6 +3,8 @@ import User from "../models/user.model.js";
 import Message from "../models/message.model.js";
 import multer from "multer";
 import { fileTypeFromBuffer } from "file-type";
+import fs from 'fs';
+import path from 'path';
 
 import cloudinary from "../lib/util/cloudinary.js";
 import { CLOUDINARY_IMAGE_FOLDER, RESOURCE_TYPE_IMAGE, IMAGE_UPLOAD_LIMIT_BYTES, MESSAGES_LIMIT } from "../constants.js";
@@ -26,17 +28,34 @@ export const getUsersForSidebar = async (req, res) => {
   }
 };
 
-const storage = multer.memoryStorage();
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(process.cwd(), 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1E9)}${path.extname(file.originalname)}`;
+    cb(null, uniqueName);
+  }
+});
+
 const upload = multer({
   storage,
   limits: { fileSize: IMAGE_UPLOAD_LIMIT_BYTES },
   fileFilter: async (req, file, cb) => {
-    const buffer = file.buffer;
-    const type = await fileTypeFromBuffer(buffer);
-    if (!type || !type.mime.startsWith('image/')) {
-      return cb(new Error('Only image files are allowed!'), false);
+    try {
+      const buffer = fs.readFileSync(file.path);
+      const type = await fileTypeFromBuffer(buffer);
+      if (!type || !type.mime.startsWith('image/')) {
+        return cb(new Error('Only image files are allowed!'), false);
+      }
+      cb(null, true);
+    } catch (error) {
+      cb(new Error('File validation failed'), false);
     }
-    cb(null, true);
   },
 });
 
@@ -48,18 +67,26 @@ export const uploadImage = [
         return res.status(400).json({ error: "No image file provided." });
       }
 
-      const uploadResponse = await cloudinary.uploader.upload_stream(
-        { folder: CLOUDINARY_IMAGE_FOLDER, resource_type: RESOURCE_TYPE_IMAGE },
-        (error, result) => {
-          if (error) {
-            logger.error({ err: error }, 'Error uploading to Cloudinary stream');
-            return res.status(500).json({ error: "Error uploading image to Cloudinary." });
-          }
-          res.status(200).json({ imageUrl: result.secure_url });
-        }
-      ).end(req.file.buffer);
+      const uploadResponse = await cloudinary.uploader.upload(req.file.path, {
+        folder: CLOUDINARY_IMAGE_FOLDER,
+        resource_type: RESOURCE_TYPE_IMAGE,
+        timeout: 60000,
+      });
+
+      // Clean up temp file after upload
+      fs.unlink(req.file.path, (err) => {
+        if (err) logger.error({ err }, 'Error deleting temp file');
+      });
+
+      res.status(200).json({ imageUrl: uploadResponse.secure_url });
     } catch (error) {
       logger.error("Error in uploadImage controller: ", error.message);
+      // Clean up temp file on error
+      if (req.file && req.file.path) {
+        fs.unlink(req.file.path, (err) => {
+          if (err) logger.error({ err }, 'Error deleting temp file in catch block');
+        });
+      }
       res.status(500).json({ error: "Internal server error" });
     }
   },
