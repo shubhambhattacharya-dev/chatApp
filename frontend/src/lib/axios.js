@@ -3,7 +3,7 @@ import { useAuthStore } from '../store/useAuthStore';
  
 const API_BASE_URL = (() => {
   if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
+    return `${import.meta.env.VITE_API_BASE_URL}/api`;
   }
   if (import.meta.env.PROD) {
     return "/api"; // Use relative URLs in production (same domain)
