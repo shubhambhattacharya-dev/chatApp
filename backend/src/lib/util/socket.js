@@ -7,6 +7,23 @@ let io;
 
 const userSocketMap = {}; // { userId: [socketId1, socketId2, ...] }
 
+// Cleanup function to remove stale sockets
+const cleanupStaleSockets = () => {
+  if (!io) return; // Ensure io is initialized
+  for (const userId in userSocketMap) {
+    userSocketMap[userId] = userSocketMap[userId].filter(socketId => {
+      const socket = io.sockets.sockets.get(socketId);
+      return socket && socket.connected;
+    });
+    if (userSocketMap[userId].length === 0) {
+      delete userSocketMap[userId];
+    }
+  }
+};
+
+// Run cleanup every 5 minutes
+setInterval(cleanupStaleSockets, 5 * 60 * 1000);
+
 
 export const getAllUserSockets = (userId) => userSocketMap[userId] || [];
 

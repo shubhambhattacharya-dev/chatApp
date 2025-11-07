@@ -154,8 +154,18 @@ export const useAuthStore = create((set, get) => ({
     newSocket.on("disconnect", (reason) => {
       console.log("Socket disconnected, reason:", reason);
       if (reason !== "io client disconnect") {
-        toast.error("Disconnected from the server");
+        toast.error("Disconnected from the server. Attempting to reconnect...");
       }
+    });
+
+    newSocket.on("reconnect", (attemptNumber) => {
+      console.log(`Reconnected after ${attemptNumber} attempts`);
+      toast.success("Reconnected to the server");
+    });
+
+    newSocket.on("reconnect_failed", () => {
+      console.error("Failed to reconnect after all attempts");
+      toast.error("Unable to reconnect. Please refresh the page.");
     });
 
     newSocket.on("getOnlineUsers", (userIds) => {

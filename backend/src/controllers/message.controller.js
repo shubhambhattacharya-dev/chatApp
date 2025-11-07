@@ -67,27 +67,39 @@ export const uploadImage = [
         return res.status(400).json({ error: "No image file provided." });
       }
 
-      const uploadResponse = await cloudinary.uploader.upload(req.file.path, {
-        folder: CLOUDINARY_IMAGE_FOLDER,
-        resource_type: RESOURCE_TYPE_IMAGE,
-        timeout: 60000,
-      });
+      let uploadResponse;
+      try {
+        uploadResponse = await cloudinary.uploader.upload(req.file.path, {
+          folder: CLOUDINARY_IMAGE_FOLDER,
+          resource_type: RESOURCE_TYPE_IMAGE,
+          timeout: 60000,
+        });
+      } catch (cloudinaryError) {
+        logger.error("Cloudinary upload error: ", cloudinaryError.message);
+        // Clean up temp file on Cloudinary error
+        if (req.file && req.file.path) {
+          fs.unlink(req.file.path, (err) => {
+            if (err) logger.error({ err }, 'Error deleting temp file after Cloudinary failure');
+          });
+        }
+        return res.status(500).json({ error: "Failed to upload image to cloud storage" });
+      }
 
-      // Clean up temp file after upload
+      // Clean up temp file after successful upload
       fs.unlink(req.file.path, (err) => {
-        if (err) logger.error({ err }, 'Error deleting temp file');
+        if (err) logger.error({ err }, 'Error deleting temp file after upload');
       });
 
       res.status(200).json({ imageUrl: uploadResponse.secure_url });
     } catch (error) {
       logger.error("Error in uploadImage controller: ", error.message);
-      // Clean up temp file on error
+      // Clean up temp file on general error
       if (req.file && req.file.path) {
         fs.unlink(req.file.path, (err) => {
           if (err) logger.error({ err }, 'Error deleting temp file in catch block');
         });
       }
-      res.status(500).json({ error: "Internal server error" });
+      res.status(500).json({ error: "Internal server error during image upload" });
     }
   },
 ];
@@ -141,16 +153,19 @@ export const sendMessage = async (req, res) => {
     }
     const senderId = req.user._id;
 
+    // Sanitize message content
+    const sanitizedMessage = message ? message.replace(/<[^>]*>/g, '').trim() : '';
+
     const attachments = imageUrl ? [{ type: 'image', url: imageUrl }] : [];
 
-    if (!message && attachments.length === 0) {
+    if (!sanitizedMessage && attachments.length === 0) {
       return res.status(400).json({ error: "Message content cannot be empty." });
     }
 
     const newMessage = new Message({
       senderId,
       receiverId,
-      message,
+      message: sanitizedMessage,
       attachments,
     });
 

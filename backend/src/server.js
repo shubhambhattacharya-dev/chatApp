@@ -17,8 +17,7 @@ import messageRoutes from "./routes/message.route.js";
 import connectDB from "./db/connectMongoDB.js";
 import logger from "./lib/util/logger.js";
 import { initSocket } from "./lib/util/socket.js";
-import dotenv from "dotenv";
-dotenv.config();
+
 
 const app = express();
 let server;
@@ -102,14 +101,7 @@ app.use(cors(corsOptions));
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 
-if (process.env.NODE_ENV === "production") {
-	const __filename = fileURLToPath(import.meta.url);
-	const __dirname = path.dirname(__filename);
-	app.use(express.static(path.resolve(__dirname, "../../frontend/dist")));
-	app.get("*", (req, res) => {
-		res.sendFile(path.resolve(__dirname, "../../frontend/dist", "index.html"));
-	});
-}
+
 
 app.use((req, res, next) => {
   res.status(404).json({ success: false, message: "API endpoint not found" });
