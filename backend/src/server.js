@@ -101,7 +101,18 @@ app.use(cors(corsOptions));
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 
+// Serve static assets in production
+if (process.env.NODE_ENV === "production") {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
 
+  app.use(express.static(path.join(__dirname, "../../frontend/dist")));
+
+  // Fallback for all other routes to serve the frontend's index.html
+  app.get("*", (req, res) => {
+    res.sendFile(path.resolve(__dirname, "../../frontend/dist", "index.html"));
+  });
+}
 
 app.use((req, res, next) => {
   res.status(404).json({ success: false, message: "API endpoint not found" });
