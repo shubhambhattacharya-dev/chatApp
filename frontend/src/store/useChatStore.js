@@ -49,7 +49,7 @@ export const useChatStore = create((set, get) => ({
 
   // ✅ Send message to the selected user
   sendMessage: async (messageData) => {
-    const { selectedUser } = get();
+    const { selectedUser, handleNewMessage } = get();
     if (!selectedUser?._id) return toast.error("No user selected!");
 
     set({ isSendingMessage: true });
@@ -61,6 +61,7 @@ export const useChatStore = create((set, get) => ({
       );
 
       // The backend will broadcast the message via Socket.IO, so no need for optimistic update here.
+      handleNewMessage(res.data);
 
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to send message");
@@ -71,15 +72,35 @@ export const useChatStore = create((set, get) => ({
 
   // ✅ Handle incoming new message
   handleNewMessage: (newMessage) => {
-    set((state) => ({
-      messages: [...state.messages, newMessage],
-    }));
+    console.log("Received new message:", newMessage); // Add this line
+    set((state) => {
+      const { selectedUser, messages } = state;
+      // Only add the message if it's relevant to the currently selected user and not already present
+      if (selectedUser && (newMessage.senderId._id === selectedUser._id || newMessage.receiverId === selectedUser._id)) {
+        const messageExists = messages.some(msg => msg._id === newMessage._id);
+        if (!messageExists) {
+          return {
+            messages: [...messages, newMessage],
+          };
+        }
+      }
+      return state; // No change if not relevant or already exists
+    });
   },
 
   // ✅ Handle message deletion
   handleMessageDeleted: (deletedMessageId) => {
     set((state) => ({
       messages: state.messages.filter((msg) => msg._id !== deletedMessageId),
+    }));
+  },
+
+  // ✅ Handle message read
+  handleMessageRead: (messageId, readAt) => {
+    set((state) => ({
+      messages: state.messages.map((msg) =>
+        msg._id === messageId ? { ...msg, isRead: true, readAt } : msg
+      ),
     }));
   },
 
@@ -122,6 +143,16 @@ export const useChatStore = create((set, get) => ({
     const socket = useAuthStore.getState().socket;
     if (socket && selectedUser) {
       socket.emit("stopTyping", { receiverId: selectedUser._id });
+    }
+  },
+
+  // ✅ Mark message as read
+  markMessageAsRead: async (messageId) => {
+    try {
+      await axiosInstance.put(`/messages/read/${messageId}`);
+      // The backend will emit the read event via Socket.IO, so no need for optimistic update here.
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to mark message as read");
     }
   },
 

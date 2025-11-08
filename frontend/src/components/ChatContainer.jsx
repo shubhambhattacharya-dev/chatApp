@@ -5,7 +5,7 @@ import ChatHeader from './ChatHeader'
 import MessageInput from './MessageInput'
 import MessageSkeleton from './skeletons/MessageSkeleton'
 import { formatMessageTime } from '../lib/util'
-import { MdDelete } from "react-icons/md";
+import { MdDelete, MdDone } from "react-icons/md";
 import toast from "react-hot-toast";
 
 const ChatContainer = () => {
@@ -15,12 +15,15 @@ const ChatContainer = () => {
     selectedUser,
     messages,
     deleteMessage,
+    markMessageAsRead,
     typingUsers,
   } = useChatStore()
 
   const { authUser, socket } = useAuthStore()
   const messageEndRef = useRef(null)
+  const messagesContainerRef = useRef(null)
   const [selectedImage, setSelectedImage] = useState(null)
+  const [isAtBottom, setIsAtBottom] = useState(true)
 
   const handleDeleteMessage = async (messageId) => {
     if (!window.confirm("Are you sure you want to delete this message?")) return;
@@ -70,10 +73,28 @@ const ChatContainer = () => {
 
   // 🟢 Auto-scroll when new messages arrive
   useEffect(() => {
-    if (messageEndRef.current) {
+    if (messageEndRef.current && isAtBottom) {
       messageEndRef.current.scrollIntoView({ behavior: 'smooth' })
     }
-  }, [messages.length])
+  }, [messages.length, isAtBottom])
+
+  // Check if user is at bottom of chat
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const atBottom = scrollTop + clientHeight >= scrollHeight - 10; // 10px tolerance
+      setIsAtBottom(atBottom);
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    // Initial check
+    handleScroll();
+
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [messages.length]);
 
   // 🟡 Loading skeleton
   if (isMessagesLoading) {
@@ -97,13 +118,18 @@ const ChatContainer = () => {
   return (
     <div className='flex-1 flex flex-col overflow-auto'>
       <ChatHeader />
-      <div className='flex-1 overflow-y-auto p-4 space-y-4'>
+      <div ref={messagesContainerRef} className='flex-1 overflow-y-auto p-4 space-y-4'>
         {messages.filter(Boolean).map((message) => (
           <div
             key={message._id || message.tempId}
             className={`chat ${
               message.senderId?._id === authUser._id ? 'chat-end' : 'chat-start'
             }`}
+            onClick={() => {
+              if (message.senderId?._id !== authUser._id && !message.isRead) {
+                markMessageAsRead(message._id);
+              }
+            }}
           >
             <div className='chat-image avatar'>
               <div className='size-10 rounded-full border'>
@@ -142,6 +168,11 @@ const ChatContainer = () => {
                 >
                   <MdDelete size={16} />
                 </button>
+              )}
+              {message.senderId?._id !== authUser._id && message.isRead && (
+                <div className='absolute bottom-1 right-1 text-white text-xs opacity-50'>
+                  <MdDone size={16} />
+                </div>
               )}
             </div>
           </div>

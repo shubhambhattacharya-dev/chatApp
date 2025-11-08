@@ -12,7 +12,7 @@ const getBaseURL = () => {
   if (import.meta.env.PROD) {
     return window.location.origin;
   }
-  return "http://localhost:5000";
+  return "http://localhost:5000"; // Updated to match actual backend port
 };
 
 export const useAuthStore = create((set, get) => ({
@@ -89,21 +89,32 @@ export const useAuthStore = create((set, get) => ({
   updateProfile: async (data) => {
     set({ isUpdatingProfile: true });
     try {
-      const sanitizedData = {};
-      if (data.fullName) {
-        sanitizedData.fullName = DOMPurify.sanitize(data.fullName);
-      }
-      if (data.email) {
-        sanitizedData.email = DOMPurify.sanitize(data.email);
-      }
-      if (data.password) {
-        sanitizedData.password = data.password;
-      }
-      if (data.profilePic) {
-        sanitizedData.profilePic = data.profilePic;
+      let requestData;
+      let headers = {};
+
+      // Check if data is FormData (for file uploads)
+      if (data instanceof FormData) {
+        requestData = data;
+        // Let axios set Content-Type automatically for FormData
+      } else {
+        // For regular data updates
+        const sanitizedData = {};
+        if (data.fullName) {
+          sanitizedData.fullName = DOMPurify.sanitize(data.fullName);
+        }
+        if (data.email) {
+          sanitizedData.email = DOMPurify.sanitize(data.email);
+        }
+        if (data.password) {
+          sanitizedData.password = data.password;
+        }
+        if (data.profilePic) {
+          sanitizedData.profilePic = data.profilePic;
+        }
+        requestData = sanitizedData;
       }
 
-      const res = await axiosInstance.put("/auth/update-profile", sanitizedData);
+      const res = await axiosInstance.put("/auth/update-profile", requestData, { headers });
       const updatedUser = res.data.user;
       set({ authUser: updatedUser });
 
@@ -188,6 +199,10 @@ export const useAuthStore = create((set, get) => ({
 
     newSocket.on("messageDeleted", (deletedMessageId) => {
       useChatStore.getState().handleMessageDeleted(deletedMessageId);
+    });
+
+    newSocket.on("messageRead", ({ messageId, readAt }) => {
+      useChatStore.getState().handleMessageRead(messageId, readAt);
     });
 
     set({ socket: newSocket });

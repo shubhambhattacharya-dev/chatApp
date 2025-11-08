@@ -2,6 +2,7 @@ import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import logger from "./logger.js";
 import cookieParser from "cookie-parser";
+import User from "../../models/user.model.js";
 
 let io;
 
@@ -69,10 +70,12 @@ const initSocket = (server) => {
 		logger.info(`User connected: ${socket.id}, userId: ${userId}`);
 
 		if (userId) {
+			// Allow multiple sockets per user (for multiple tabs)
 			if (!userSocketMap[userId]) {
 				userSocketMap[userId] = [];
 			}
 			userSocketMap[userId].push(socket.id);
+			User.findByIdAndUpdate(userId, { isOnline: true, lastSeen: new Date() }).catch(err => logger.error(err));
 		}
 
 		io.emit("getOnlineUsers", Object.keys(userSocketMap));
@@ -106,6 +109,17 @@ const initSocket = (server) => {
 			if (userId && userSocketMap[userId]) {
 				userSocketMap[userId] = userSocketMap[userId].filter(id => id !== socket.id);
 				if (userSocketMap[userId].length === 0) {
+					delete userSocketMap[userId];
+					User.findByIdAndUpdate(userId, { isOnline: false, lastSeen: new Date() }).catch(err => logger.error(err));
+				}
+				io.emit("getOnlineUsers", Object.keys(userSocketMap));
+			}
+		});
+
+		socket.on("setOffline", () => {
+			if (userId) {
+				User.findByIdAndUpdate(userId, { isOnline: false, lastSeen: new Date() }).catch(err => logger.error(err));
+				if (userSocketMap[userId]) {
 					delete userSocketMap[userId];
 				}
 				io.emit("getOnlineUsers", Object.keys(userSocketMap));

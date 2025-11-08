@@ -5,7 +5,7 @@
   "main": "src/server.js",
   "type": "module",
   "scripts": {
-    "start": "node --max-old-space-size=4096 src/server.js",
+    "start": "node --max-old-space-size=4096 bootstrap.js",
     "dev": "nodemon --max-old-space-size=4096 -r dotenv/config bootstrap.js"
   },
   "keywords": [],

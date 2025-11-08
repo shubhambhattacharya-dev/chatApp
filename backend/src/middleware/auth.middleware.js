@@ -43,21 +43,21 @@ export const protectRoute = async (req, res, next) => {
 
         // Handle specific JWT errors
         if (error.name === 'TokenExpiredError') {
-            res.status(401).json({
+            return res.status(401).json({
                 success: false,
                 message: "Unauthorized: Token expired"
             });
         }
 
         if (error.name === 'JsonWebTokenError') {
-            res.status(401).json({
+            return res.status(401).json({
                 success: false,
                 message: "Unauthorized: Invalid token"
             });
         }
 
         // For any other unexpected errors, return a 500 Internal Server Error
-        res.status(500).json({ // Changed to 500 for unhandled errors
+        return res.status(500).json({ // Changed to 500 for unhandled errors
             success: false,
             message: "Internal Server Error: Authentication failed unexpectedly"
         });

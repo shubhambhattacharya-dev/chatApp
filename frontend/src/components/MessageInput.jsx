@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { Image, Loader, Send, X } from "lucide-react";
 import toast from "react-hot-toast";
@@ -6,6 +6,7 @@ import { axiosInstance } from "../lib/axios";
 
 const MessageInput = ({ typingUsers = [] }) => {
   const [text, setText] = useState("");
+  const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -13,11 +14,14 @@ const MessageInput = ({ typingUsers = [] }) => {
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
+    if (!file) return;
+
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image file");
       return;
     }
 
+    setImageFile(file);
     const reader = new FileReader();
     reader.onloadend = () => {
       setImagePreview(reader.result);
@@ -26,30 +30,25 @@ const MessageInput = ({ typingUsers = [] }) => {
   };
 
   const removeImage = () => {
+    setImageFile(null);
     setImagePreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!text.trim() && !imagePreview) return;
+    if (!text.trim() && !imageFile) return;
 
-    // Stop typing indicator when sending message
     stopTyping();
 
     try {
       let imageUrl = null;
 
-      if (imagePreview) {
-        // Show loading state for image upload
+      if (imageFile) {
         toast.loading("Uploading image...", { id: "upload" });
 
-        // Upload image to backend first
         const formData = new FormData();
-        // Convert base64 to blob
-        const response = await fetch(imagePreview);
-        const blob = await response.blob();
-        formData.append('image', blob);
+        formData.append('image', imageFile);
 
         const uploadRes = await axiosInstance.post('/messages/upload-image', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
@@ -59,16 +58,13 @@ const MessageInput = ({ typingUsers = [] }) => {
         toast.success("Image uploaded successfully!", { id: "upload" });
       }
 
-      console.log('Sending message data:', { text: text.trim(), imageUrl });
       await sendMessage({
         message: text.trim(),
         imageUrl,
       });
 
-      // Clear form
       setText("");
-      setImagePreview(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      removeImage();
     } catch (error) {
       console.error("Failed to send message:", error);
       toast.error("Failed to send message. Please try again.");
@@ -78,7 +74,6 @@ const MessageInput = ({ typingUsers = [] }) => {
 
   return (
     <div className="p-4 w-full">
-      {/* Typing Indicator */}
       {typingUsers.length > 0 && selectedUser && (
         <div className="mb-2 text-sm text-gray-500 italic">
           {selectedUser.fullName} is typing...
@@ -116,14 +111,11 @@ const MessageInput = ({ typingUsers = [] }) => {
             onChange={(e) => {
               setText(e.target.value);
 
-              // Handle typing indicator
               if (e.target.value.trim()) {
                 startTyping();
-                // Clear existing timeout
                 if (typingTimeoutRef.current) {
                   clearTimeout(typingTimeoutRef.current);
                 }
-                // Set new timeout to stop typing after 1 second of inactivity
                 typingTimeoutRef.current = setTimeout(() => {
                   stopTyping();
                 }, 1000);
@@ -132,7 +124,6 @@ const MessageInput = ({ typingUsers = [] }) => {
               }
             }}
             onBlur={() => {
-              // Stop typing when input loses focus
               stopTyping();
             }}
           />
@@ -158,7 +149,7 @@ const MessageInput = ({ typingUsers = [] }) => {
         <button
           type='submit'
           className='btn btn-sm sm:btn-md btn-circle'
-          disabled={isSendingMessage || (!text.trim() && !imagePreview)}
+          disabled={isSendingMessage || (!text.trim() && !imageFile)}
         >
           {isSendingMessage ? <Loader className='animate-spin' size={22} /> : <Send size={22} />}
         </button>

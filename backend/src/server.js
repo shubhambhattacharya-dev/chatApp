@@ -32,10 +32,10 @@ if (process.env.NODE_ENV === 'production' && process.env.HTTPS_KEY && process.en
   server = http.createServer(app);
 }
 
-server.setMaxListeners(50);
+server.setMaxListeners(100);
 initSocket(server);
 
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 5000;
 
 
 const requiredEnv = ['MONGO_DB', 'JWT_SECRET', 'CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET', 'NODE_ENV'];
@@ -82,7 +82,7 @@ app.use(cookieParser());
 
 const whitelist = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',')
-  : ['http://localhost:3000'];
+  : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'];
 
 const corsOptions = {
   origin: function (origin, callback) {
@@ -101,18 +101,8 @@ app.use(cors(corsOptions));
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 
-// Serve static assets in production
-if (process.env.NODE_ENV === "production") {
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-
-  app.use(express.static(path.join(__dirname, "../../frontend/dist")));
-
-  // Fallback for all other routes to serve the frontend's index.html
-  app.get("*", (req, res) => {
-    res.sendFile(path.resolve(__dirname, "../../frontend/dist", "index.html"));
-  });
-}
+// Note: Static file serving is handled by Render's frontend service
+// This backend only serves API routes
 
 app.use((req, res, next) => {
   res.status(404).json({ success: false, message: "API endpoint not found" });

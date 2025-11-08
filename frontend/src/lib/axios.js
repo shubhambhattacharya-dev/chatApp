@@ -1,15 +1,7 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
  
-const API_BASE_URL = (() => {
-  if (import.meta.env.VITE_API_BASE_URL) {
-    return `${import.meta.env.VITE_API_BASE_URL}/api`;
-  }
-  if (import.meta.env.PROD) {
-    return "/api"; // Use relative URLs in production (same domain)
-  }
-  return "http://localhost:8000/api";
-})();
+const API_BASE_URL = "/api";
 
 export const axiosInstance = axios.create({
     baseURL: API_BASE_URL,

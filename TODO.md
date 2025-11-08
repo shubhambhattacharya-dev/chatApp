@@ -1,19 +1,30 @@
-# TODO: Fix Real-Time Chat Issues
+# Image Upload Issues Fix TODO
 
-## Tasks
-- [x] Remove redundant socket.emit("sendMessage") in useChatStore.js sendMessage function, as backend already emits "newMessage"
-- [x] Adjust subscribeToMessage logic in useChatStore.js to ensure messages are added for both sender and receiver without duplication
-- [x] Ensure imageUrl is correctly handled in message data in MessageInput.jsx
-- [x] Add logging to debug socket events in socket.js and useChatStore.js
-- [x] Verify CORS and socket connection in server.js and useAuthStore.js
-- [x] Add detailed logging to message.controller.js for debugging
-- [x] Test sending text messages from both users via API - messages are saved and retrievable
-- [x] Add imageUrl support in ChatContainer.jsx for displaying images
-- [x] Update sendMessage controller to include imageUrl in socket emissions
-- [x] Add enhanced socket logging in useAuthStore.js for debugging
-- [x] Clean up redundant socket listeners in socket.js
-- [x] Test real-time socket events in browser
-- [x] Check browser console for socket events
-- [x] Verify messages appear in real-time without page refresh
-- [x] Add optimistic updates to sendMessage in useChatStore.js to show messages immediately in sender's chat box
-- [x] Remove setOnlineUsers([]) from disconnectSocket to allow proper online status updates
+## Issues Identified
+- **Profile Picture Upload**: Frontend sends FormData to updateProfile, but useAuthStore treats it as object and sends empty sanitizedData, not the FormData.
+- **Message Image Send**: Frontend tries to upload to /messages/upload-image, but route is missing in message.route.js. uploadImage controller exists but not routed.
+- ERR_CONNECTION_RESET: Likely due to failed uploads causing connection issues.
+- **Mark Message as Read**: Missing API endpoint for marking messages as read. ✅ Implemented PUT /api/messages/read/:id endpoint, added markMessageAsRead function, validation, socket event, frontend handler, UI indicator, and click-to-mark functionality.
+
+## Plan
+1. Fix updateProfile in useAuthStore.js to detect FormData and send it directly for image uploads.
+2. Add /upload-image route in message.route.js using the existing uploadImage controller.
+3. Add PUT /read/:id route for marking messages as read.
+4. Test profile upload and message image send in local environment.
+5. Test mark as read functionality.
+6. Test in render environment.
+7. Verify no ERR_CONNECTION_RESET after fixes.
+
+## Dependent Files
+- chatApp/frontend/src/store/useAuthStore.js
+- chatApp/backend/src/routes/message.route.js
+- chatApp/backend/src/controllers/message.controller.js
+- chatApp/backend/src/middleware/validation.middleware.js
+
+## Followup
+- Run backend and frontend locally.
+- Test profile picture upload.
+- Test sending image in messages.
+- Test marking messages as read.
+- Deploy to render and test there.
+- Check console for errors.

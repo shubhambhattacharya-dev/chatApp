@@ -100,3 +100,8 @@ export const validateDeleteMessage = [
     param('id').isMongoId().withMessage('Invalid message ID'),
     handleValidationErrors,
 ];
+
+export const validateMarkMessageAsRead = [
+    param('id').isMongoId().withMessage('Invalid message ID'),
+    handleValidationErrors,
+];
