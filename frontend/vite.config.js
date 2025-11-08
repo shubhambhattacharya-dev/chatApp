@@ -9,7 +9,7 @@ export default defineConfig({
     hmr: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:5000', // Updated to match actual backend port
+        target: 'http://localhost:8000', // Updated to match actual backend port
         changeOrigin: true,
       },
     },
