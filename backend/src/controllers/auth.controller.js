@@ -137,6 +137,14 @@ export const login = async (req, res) => {
       });
     }
 
+    // Check if user is already logged in from another session
+    if (user.isOnline) {
+      return res.status(409).json({
+        success: false,
+        message: 'User is already logged in from another session. Please logout from other devices first.',
+      });
+    }
+
     user.isOnline = true;
     user.lastSeen = new Date();
     await user.save();
