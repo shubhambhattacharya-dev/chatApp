@@ -54,7 +54,7 @@ app.use(
       directives: {
         ...helmet.contentSecurityPolicy.getDefaultDirectives(),
         "img-src": ["'self'", "data:", "*.cloudinary.com"],
-        "connect-src": ["'self'", "*.cloudinary.com", "data:", "ws:", "wss:", "http://localhost:5000", "http://localhost:5001", "http://localhost:5002"],
+        "connect-src": ["'self'", "*.cloudinary.com", "data:", "ws:", "wss:", "http://localhost:5000", "http://localhost:5001", "http://localhost:5002", "https://justchat-d566.onrender.com"],
       },
     },
     strictTransportSecurity: {
@@ -80,13 +80,10 @@ app.use('/api', limiter);
 app.use(express.json({ limit: "5mb" }));
 app.use(cookieParser());
 
-const whitelist = process.env.CORS_ORIGINS
-  ? process.env.CORS_ORIGINS.split(',')
-  : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'https://justchat-d566.onrender.com'];
-
 const corsOptions = {
   origin: function (origin, callback) {
-    if (whitelist.indexOf(origin) !== -1 || !origin) {
+    const allowedOrigins = ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'https://justchat-d566.onrender.com'];
+    if (allowedOrigins.includes(origin) || !origin) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
