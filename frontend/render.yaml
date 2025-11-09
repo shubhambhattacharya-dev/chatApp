@@ -1,24 +1,8 @@
 services:
   - type: web
-    name: chatapp-frontend
-    runtime: static
-    buildCommand: npm run build
-    staticPublishPath: ./dist
-    envVars:
-      - key: VITE_API_BASE_URL
-        fromService:
-          type: web
-          name: chatapp-backend
-          property: url
-      - key: VITE_BACKEND_URL
-        fromService:
-          type: web
-          name: chatapp-backend
-          property: url
-  - type: web
-    name: chatapp-backend
+    name: chatapp
     runtime: node
-    buildCommand: npm install
+    buildCommand: npm run build
     startCommand: npm start
     envVars:
       - key: PORT
@@ -33,10 +17,7 @@ services:
         fromSecret: CLOUDINARY_API_KEY
       - key: CLOUDINARY_API_SECRET
         fromSecret: CLOUDINARY_API_SECRET
-      - key: CORS_ORIGINS
-        fromService:
-          type: web
-          name: chatapp-frontend
-          property: url
       - key: NODE_ENV
         value: production
+      - key: VITE_API_BASE_URL
+        value: /api
