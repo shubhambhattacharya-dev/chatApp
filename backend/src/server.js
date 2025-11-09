@@ -101,6 +101,11 @@ app.use(cors(corsOptions));
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 
+// Root endpoint for API status
+app.get('/api', (req, res) => {
+  res.json({ success: true, message: "Welcome to JustChat API", version: "1.0.0" });
+});
+
 // Note: Static file serving is handled by Render's frontend service
 // This backend only serves API routes
 
