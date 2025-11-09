@@ -12,7 +12,7 @@ const getBaseURL = () => {
   if (import.meta.env.PROD) {
     return window.location.origin;
   }
-  return "http://localhost:8000";
+  return "http://localhost:5000";
 };
 
 export const useAuthStore = create((set, get) => ({
