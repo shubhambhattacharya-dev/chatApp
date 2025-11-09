@@ -20,4 +20,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: VITE_API_BASE_URL
-        value: /api
+        fromService:
+          type: web
+          name: chatapp-backend
+          property: url
