@@ -106,19 +106,6 @@ if (process.env.NODE_ENV === 'production') {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const frontendPath = path.join(__dirname, '../../frontend/dist');
   app.use(express.static(frontendPath));
-
-  // Catch all handler: send back index.html for any non-API routes
-  app.use('*', (req, res) => {
-    if (!req.path.startsWith('/api') && !req.path.startsWith('/socket.io')) {
-      res.sendFile(path.join(frontendPath, 'index.html'), (err) => {
-        if (err) {
-          res.status(500).json({ success: false, message: "Internal Server Error" });
-        }
-      });
-    } else {
-      res.status(404).json({ success: false, message: "API endpoint not found" });
-    }
-  });
 }
 
 // Root endpoint for API status
