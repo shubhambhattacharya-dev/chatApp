@@ -54,7 +54,7 @@ app.use(
       directives: {
         ...helmet.contentSecurityPolicy.getDefaultDirectives(),
         "img-src": ["'self'", "data:", "*.cloudinary.com"],
-        "connect-src": ["'self'", "*.cloudinary.com", "data:"],
+        "connect-src": ["'self'", "*.cloudinary.com", "data:", "ws:", "wss:"],
       },
     },
     strictTransportSecurity: {
