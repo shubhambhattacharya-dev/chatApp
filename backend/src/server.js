@@ -82,7 +82,7 @@ app.use(cookieParser());
 
 const corsOptions = {
   origin: function (origin, callback) {
-    const allowedOrigins = ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'https://justchat-d566.onrender.com'];
+    const allowedOrigins = ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'https://justchat-d566.onrender.com', 'https://chatapp-backend.onrender.com'];
     if (allowedOrigins.includes(origin) || !origin) {
       callback(null, true);
     } else {
