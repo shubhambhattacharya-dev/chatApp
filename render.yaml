@@ -19,5 +19,3 @@ services:
         fromSecret: CLOUDINARY_API_SECRET
       - key: NODE_ENV
         value: production
-      - key: VITE_API_BASE_URL
-        value: /api
