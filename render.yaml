@@ -19,3 +19,5 @@ services:
         fromSecret: CLOUDINARY_API_SECRET
       - key: NODE_ENV
         value: production
+      - key: CORS_ORIGINS
+        value: https://justchat-d566.onrender.com
