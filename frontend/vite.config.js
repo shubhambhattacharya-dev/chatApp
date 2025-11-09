@@ -12,6 +12,11 @@ export default defineConfig({
         target: 'http://localhost:8000', // Updated to match actual backend port
         changeOrigin: true,
       },
+      '/socket.io': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
   define: {

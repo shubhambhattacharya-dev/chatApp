@@ -12,7 +12,7 @@ const getBaseURL = () => {
   if (import.meta.env.PROD) {
     return window.location.origin;
   }
-  return "http://localhost:8000"; // Updated to match actual backend port
+  return "http://localhost:8000";
 };
 
 export const useAuthStore = create((set, get) => ({

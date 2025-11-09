@@ -101,24 +101,14 @@ app.use(cors(corsOptions));
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 
+
+
 // Root endpoint for API status
 app.get('/api', (req, res) => {
   res.json({ success: true, message: "Welcome to JustChat API", version: "1.0.0" });
 });
 
-// Serve static files from the frontend dist directory
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-app.use(express.static(path.join(__dirname, '../../frontend/dist')));
 
-// Catch-all handler: send back index.html for any non-API requests
-app.use((req, res, next) => {
-  // Skip API routes - they are handled by the routes above
-  if (req.path.startsWith('/api')) {
-    return next(); // Let the 404 handler below deal with it
-  }
-  res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'));
-});
 
 app.use((req, res, next) => {
   res.status(404).json({ success: false, message: "API endpoint not found" });
