@@ -82,7 +82,7 @@ app.use(cookieParser());
 
 const whitelist = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',')
-  : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'];
+  : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'https://justchat-d566.onrender.com'];
 
 const corsOptions = {
   origin: function (origin, callback) {
