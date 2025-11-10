@@ -35,7 +35,7 @@ if (process.env.NODE_ENV === 'production' && process.env.HTTPS_KEY && process.en
 server.setMaxListeners(100);
 initSocket(server);
 
-const PORT = process.env.PORT || 5000;
+let PORT = process.env.PORT || 5000;
 
 
 const requiredEnv = ['MONGO_DB', 'JWT_SECRET', 'CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET', 'NODE_ENV'];
