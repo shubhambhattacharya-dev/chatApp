@@ -54,7 +54,7 @@ app.use(
       directives: {
         ...helmet.contentSecurityPolicy.getDefaultDirectives(),
         "img-src": ["'self'", "data:", "*.cloudinary.com"],
-        "connect-src": ["'self'", "*.cloudinary.com", "data:", "ws:", "wss:", "http://localhost:5000", "http://localhost:5001", "http://localhost:5002", "https://justchat-d566.onrender.com", "https://chatapp-backend.onrender.com"],
+        "connect-src": ["'self'", "*.cloudinary.com", "data:", "ws:", "wss:", "http://localhost:5000", "http://localhost:5001", "http://localhost:5002", "https://justchat-d566.onrender.com", "https://chatapp-backend.onrender.com", "https://justchat-d566.onrender.com"],
       },
     },
     strictTransportSecurity: {
