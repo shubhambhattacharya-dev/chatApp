@@ -150,10 +150,12 @@ const startServer = async () => {
     server.on('error', (err) => {
       if (err.code === 'EADDRINUSE') {
         if (process.env.NODE_ENV === 'development') {
-          const nextPort = parseInt(PORT) + 1;
-          logger.warn(`Port ${PORT} is busy, trying port ${nextPort}`);
+          let currentPort = parseInt(PORT);
+          const nextPort = currentPort + 1;
+          logger.warn(`Port ${currentPort} is busy, trying port ${nextPort}`);
           server.listen(nextPort, () => {
-            logger.info(`🚀 Server is running on port ${nextPort}`);
+            PORT = nextPort; // Update PORT to the newly assigned port
+            logger.info(`🚀 Server is running on port ${PORT}`);
           });
         } else {
           logger.fatal(`Port ${PORT} is already in use. Exiting.`);
