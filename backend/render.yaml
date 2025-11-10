@@ -7,7 +7,7 @@ services:
       - key: PORT
         value: 10000
       - key: MONGO_DB
-        fromSecret: MONGO_DB_URL
+        fromSecret: MONGO_DB
       - key: JWT_SECRET
         fromSecret: JWT_SECRET
       - key: CLOUDINARY_CLOUD_NAME
