@@ -2,7 +2,6 @@ services:
   - type: web
     name: chatapp-backend
     runtime: node
-    buildCommand: npm install
     startCommand: npm start
     envVars:
       - key: PORT
