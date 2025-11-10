@@ -32,7 +32,7 @@ if (process.env.NODE_ENV === 'production' && process.env.HTTPS_KEY && process.en
   server = http.createServer(app);
 }
 
-server.setMaxListeners(100);
+server.setMaxListeners(200);
 initSocket(server);
 
 let PORT = process.env.PORT || 5000;
