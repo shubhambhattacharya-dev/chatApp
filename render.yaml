@@ -20,4 +20,15 @@ services:
       - key: NODE_ENV
         value: production
       - key: CORS_ORIGINS
-        value: https://justchat-d566.onrender.com
+        value: https://chatapp-frontend.onrender.com
+  - type: static
+    name: chatapp-frontend
+    buildCommand: npm run build
+    staticPublishPath: frontend/dist
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://chatapp-backend.onrender.com/api/*
+      - type: rewrite
+        source: /*
+        destination: /index.html

@@ -80,21 +80,20 @@ app.use('/api', limiter);
 app.use(express.json({ limit: "5mb" }));
 app.use(cookieParser());
 
-const corsOptions = {
-  origin: function (origin, callback) {
-    const allowedOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : [];
-    if (process.env.NODE_ENV === 'development' || !origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  optionsSuccessStatus: 200,
-};
-
-// Apply CORS only to API routes
-app.use('/api', cors(corsOptions));
+if (process.env.NODE_ENV === 'development') {
+  app.use('/api', cors({
+    origin: '*', // Allow all origins for development
+    credentials: true,
+    optionsSuccessStatus: 200,
+  }));
+} else {
+  const allowedOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : [];
+  app.use('/api', cors({
+    origin: allowedOrigins,
+    credentials: true,
+    optionsSuccessStatus: 200,
+  }));
+}
 
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);

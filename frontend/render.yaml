@@ -1,23 +1,5 @@
 services:
-  - type: web
+  - type: static
     name: chatapp
-    runtime: node
     buildCommand: npm run build
-    startCommand: npm start
-    envVars:
-      - key: PORT
-        value: 10000
-      - key: MONGO_DB
-        fromSecret: MONGO_DB_URL
-      - key: JWT_SECRET
-        fromSecret: JWT_SECRET
-      - key: CLOUDINARY_CLOUD_NAME
-        fromSecret: CLOUDINARY_CLOUD_NAME
-      - key: CLOUDINARY_API_KEY
-        fromSecret: CLOUDINARY_API_KEY
-      - key: CLOUDINARY_API_SECRET
-        fromSecret: CLOUDINARY_API_SECRET
-      - key: NODE_ENV
-        value: production
-      - key: VITE_API_BASE_URL
-        value: https://chatapp-backend.onrender.com
+    staticPublishPath: dist
