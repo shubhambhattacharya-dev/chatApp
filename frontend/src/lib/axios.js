@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
  
-const API_BASE_URL = import.meta.env.PROD ? "https://chatapp-backend.onrender.com/api" : "/api";
+const API_BASE_URL = import.meta.env.PROD ? "https://justchat-d566.onrender.com/api" : "/api";
 
 export const axiosInstance = axios.create({
     baseURL: API_BASE_URL,

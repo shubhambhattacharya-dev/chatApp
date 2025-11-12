@@ -10,7 +10,7 @@ const getBaseURL = () => {
     return import.meta.env.VITE_BACKEND_URL;
   }
   if (import.meta.env.PROD) {
-    return window.location.origin;
+    return "https://justchat-d566.onrender.com";
   }
   return "http://localhost:5000";
 };
