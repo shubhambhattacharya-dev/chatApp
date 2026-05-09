@@ -4,8 +4,9 @@
   "description": "A real-time chat application built with React, Node.js, Express, and Socket.io.",
   "main": "src/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build":"npm install --prefix backend && npm install --prefix frontend --production=false && npm run build --prefix frontend",
+    "test": "npm test --prefix backend && npm test --prefix frontend",
+    "lint": "npm run lint --prefix backend && npm run lint --prefix frontend",
+    "build":"npm install --prefix backend && npm install --prefix frontend --production=false && npm run build --prefix backend && npm run build --prefix frontend",
     "start":"NODE_ENV=production npm run start --prefix backend"
   },
   "repository": {
